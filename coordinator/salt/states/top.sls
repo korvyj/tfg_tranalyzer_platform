@@ -1,0 +1,3 @@
+base:
+  'sonda-*':
+    - tranalyzer

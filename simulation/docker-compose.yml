@@ -1,0 +1,120 @@
+# Simulación de toda la plataforma en un solo PC.
+#
+# Cada rol (coordinador, MongoDB, sonda) es un contenedor = un "host". Una red
+# bridge 10.0.0.0/24 hace de túnel WireGuard, de modo que las direcciones
+# 10.0.0.1 cableadas en la configuración del proyecto siguen siendo válidas y
+# no hace falta WireGuard.
+#
+# Los ficheros de despliegue reales (coordinator/, sonda/, mongodb/) no se
+# modifican: esta simulación solo reutiliza sus imágenes y monta un pillar y un
+# generador de tráfico propios.
+#
+#   cd simulation && docker compose up -d --build
+#   # Panel:  http://localhost:8000
+#
+# Direcciones en la "red WireGuard" simulada:
+#   coordinador (salt-master + salt-api) : 10.0.0.1
+#   MongoDB                              : 10.0.0.10
+#   panel (FastAPI)                      : 10.0.0.11  -> publicado en localhost:8000
+#   sonda-1 (tranalyzer + minion)        : 10.0.0.2
+
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: tfg_sim_mongo
+    restart: unless-stopped
+    networks:
+      simnet:
+        ipv4_address: 10.0.0.10
+    ports:
+      # Publicado para poder inspeccionar los flujos desde el host (mongosh).
+      - "27017:27017"
+    command: ["mongod", "--bind_ip", "0.0.0.0"]
+    volumes:
+      - sim_mongo_data:/data/db
+
+  coordinator:
+    build: ../coordinator
+    image: tfg-coordinador
+    container_name: tfg_sim_coordinador
+    restart: unless-stopped
+    networks:
+      simnet:
+        # El salt-master escucha en 'interface: 10.0.0.1' (coordinator/salt/master).
+        ipv4_address: 10.0.0.1
+    volumes:
+      # master propio de la simulación (dos file_roots, sin montajes anidados).
+      - ./master:/etc/salt/master:ro
+      - ../coordinator/salt/dashboard-users:/etc/salt/dashboard-users:ro
+      - ../coordinator/salt/autosign.conf:/etc/salt/autosign.conf:ro
+      # states en /srv/salt; el árbol completo coordinator/salt en /srv/salt-extra
+      # (aporta _modules/ como segundo file_root, ver ./master).
+      - ../coordinator/salt/states:/srv/salt:ro
+      - ../coordinator/salt:/srv/salt-extra:ro
+      # Pillar propio de la simulación: mongo_host apunta a 10.0.0.10.
+      - ./pillar:/srv/pillar:ro
+      - sim_master_pki:/etc/salt/pki/master
+
+  dashboard:
+    build: ../coordinator/dashboard
+    image: tfg-dashboard
+    container_name: tfg_sim_dashboard
+    restart: unless-stopped
+    networks:
+      simnet:
+        ipv4_address: 10.0.0.11
+    ports:
+      - "8000:8000"
+    environment:
+      # salt-api del coordinador (por la red simulada, no 127.0.0.1).
+      SALT_API_URL: "http://10.0.0.1:8001"
+      SALT_API_USER: "saltdash"
+      SALT_API_PASS: "<password>"   # debe coincidir con coordinator/salt/dashboard-users
+      SALT_API_EAUTH: "file"
+      MONGO_URI: "mongodb://10.0.0.10:27017"
+      MONGO_DBNAME: "tranalyzer"
+      DASH_PORT: "8000"
+    depends_on:
+      - coordinator
+      - mongo
+
+  sonda-1:
+    build: ../sonda
+    image: tfg-sonda
+    container_name: tfg_sim_sonda_1
+    restart: unless-stopped
+    networks:
+      simnet:
+        ipv4_address: 10.0.0.2
+    # Necesario para capturar de la interfaz (eth0) dentro del contenedor.
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    environment:
+      IFACE: "eth0"
+      MONGO_HOST: "10.0.0.10"
+      MONGO_PORT: "27017"
+      MONGO_DBNAME: "tranalyzer"
+    volumes:
+      # Identidad del minion: id=sonda-1, master=10.0.0.1 (se reutiliza tal cual).
+      - ../sonda/salt/minion:/etc/salt/minion:ro
+      - sim_sonda_salt_pki:/etc/salt/pki/minion
+      # Generador de tráfico sintético (solo simulación): curl en bucle -> flujos.
+      - ./traffic/sim-traffic.sh:/usr/local/bin/sim-traffic.sh:ro
+      - ./traffic/traffic.conf:/etc/supervisor/conf.d/traffic.conf:ro
+    depends_on:
+      - coordinator
+      - mongo
+
+networks:
+  simnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+          gateway: 10.0.0.254
+
+volumes:
+  sim_mongo_data:
+  sim_master_pki:
+  sim_sonda_salt_pki:

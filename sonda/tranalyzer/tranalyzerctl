@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#
+# tranalyzerctl - control uniforme de la captura de Tranalyzer.
+#
+# Abstrae el backend para que el módulo de ejecución de Salt (tranalyzer.py)
+# funcione igual en los dos despliegues:
+#   - nativo      -> systemd  (servicio 'tranalyzer')
+#   - Docker      -> supervisor (programa 'tranalyzer')
+#   - fallback    -> proceso en segundo plano con pidfile
+#
+# Uso:  tranalyzerctl {start|stop|restart|status}
+set -euo pipefail
+
+ACTION="${1:-status}"
+UNIT="tranalyzer"
+PIDFILE="/run/tranalyzer.pid"
+RUNNER="${RUNNER:-/usr/local/bin/run-tranalyzer.sh}"
+
+detect_backend() {
+    if command -v systemctl >/dev/null 2>&1 \
+        && systemctl list-unit-files "${UNIT}.service" 2>/dev/null | grep -q "${UNIT}.service"; then
+        echo systemd
+    elif command -v supervisorctl >/dev/null 2>&1; then
+        echo supervisor
+    else
+        echo process
+    fi
+}
+
+hms_to_s() {
+    # Convierte "H:MM:SS" o "N day[s], H:MM:SS" (formato de supervisorctl) a
+    # segundos. Cadena vacía -> 0.
+    local s="$1" days=0 hms h m sec
+    [[ -z "${s}" ]] && { echo 0; return; }
+    if [[ "${s}" == *day* ]]; then days="${s%% day*}"; hms="${s##*, }"; else hms="${s}"; fi
+    IFS=: read -r h m sec <<< "${hms}"
+    echo $(( days*86400 + 10#${h:-0}*3600 + 10#${m:-0}*60 + 10#${sec:-0} ))
+}
+
+BACKEND="$(detect_backend)"
+
+case "${BACKEND}" in
+    systemd)
+        case "${ACTION}" in
+            start)   exec systemctl start   "${UNIT}" ;;
+            stop)    exec systemctl stop    "${UNIT}" ;;
+            restart) exec systemctl restart "${UNIT}" ;;
+            status)  systemctl is-active --quiet "${UNIT}" && echo running || echo stopped ;;
+            uptime)
+                systemctl is-active --quiet "${UNIT}" || { echo 0; exit 0; }
+                start="$(systemctl show -p ActiveEnterTimestamp --value "${UNIT}" 2>/dev/null || true)"
+                [[ -z "${start}" ]] && { echo 0; exit 0; }
+                st="$(date -d "${start}" +%s 2>/dev/null || echo 0)"
+                [[ "${st}" -gt 0 ]] && echo $(( $(date +%s) - st )) || echo 0
+                ;;
+        esac
+        ;;
+    supervisor)
+        case "${ACTION}" in
+            start)   exec supervisorctl start   "${UNIT}" ;;
+            stop)    exec supervisorctl stop    "${UNIT}" ;;
+            restart) exec supervisorctl restart "${UNIT}" ;;
+            status)  supervisorctl status "${UNIT}" | grep -q RUNNING && echo running || echo stopped ;;
+            uptime)
+                line="$(supervisorctl status "${UNIT}" 2>/dev/null || true)"
+                echo "${line}" | grep -q RUNNING || { echo 0; exit 0; }
+                hms_to_s "$(echo "${line}" | sed -n 's/.*uptime //p')"
+                ;;
+        esac
+        ;;
+    process)
+        case "${ACTION}" in
+            start)
+                if [[ -f "${PIDFILE}" ]] && kill -0 "$(cat "${PIDFILE}")" 2>/dev/null; then
+                    echo "ya en ejecución"; exit 0
+                fi
+                nohup "${RUNNER}" >/var/log/tranalyzer.log 2>&1 &
+                echo $! > "${PIDFILE}"
+                echo running
+                ;;
+            stop)
+                [[ -f "${PIDFILE}" ]] && kill "$(cat "${PIDFILE}")" 2>/dev/null || true
+                rm -f "${PIDFILE}"
+                echo stopped
+                ;;
+            restart) "$0" stop || true; exec "$0" start ;;
+            status)
+                if [[ -f "${PIDFILE}" ]] && kill -0 "$(cat "${PIDFILE}")" 2>/dev/null; then
+                    echo running
+                else
+                    echo stopped
+                fi
+                ;;
+            uptime)
+                if [[ -f "${PIDFILE}" ]] && kill -0 "$(cat "${PIDFILE}")" 2>/dev/null; then
+                    ps -o etimes= -p "$(cat "${PIDFILE}")" 2>/dev/null | tr -d ' ' || echo 0
+                else
+                    echo 0
+                fi
+                ;;
+        esac
+        ;;
+esac

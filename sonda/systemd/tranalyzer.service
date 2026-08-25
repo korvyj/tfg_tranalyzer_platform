@@ -1,0 +1,33 @@
+# Servicio systemd para la captura continua de Tranalyzer en una sonda
+# (despliegue nativo).
+#
+# Instalar:
+#   sudo cp tranalyzer.service /etc/systemd/system/
+#   sudo cp /ruta/a/run-tranalyzer.sh /usr/local/bin/run-tranalyzer.sh
+#   sudo chmod +x /usr/local/bin/run-tranalyzer.sh
+#   sudo mkdir -p /etc/tranalyzer && sudo nano /etc/tranalyzer/sonda.env
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now tranalyzer
+#
+# /etc/tranalyzer/sonda.env (ejemplo):
+#   IFACE=eth0
+#   MONGO_HOST=10.0.0.1
+#   MONGO_DBNAME=tranalyzer
+
+[Unit]
+Description=Tranalyzer2 - captura continua en vivo -> MongoDB
+After=network-online.target wg-quick@wg0.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+# El usuario debe tener permisos de captura
+EnvironmentFile=-/etc/tranalyzer/sonda.env
+ExecStart=/usr/local/bin/run-tranalyzer.sh
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,47 @@
+# Configuración del salt-master (coordinador).
+# Copiar a /etc/salt/master (despliegue nativo) o montarlo en el contenedor.
+
+# Escuchar solo en la interfaz WireGuard
+interface: 10.0.0.1
+
+# Árbol de estados y de pillar del proyecto. Dos file_roots para evitar montajes
+# anidados: /srv/salt aporta los estados (tranalyzer.sls, top.sls) y
+# /srv/salt-extra aporta el subdir _modules/. Salt busca '_modules' en cada
+# file_root, así que 'saltutil.sync_modules' encuentra
+# /srv/salt-extra/_modules/tranalyzer.py.
+file_roots:
+  base:
+    - /srv/salt
+    - /srv/salt-extra
+pillar_roots:
+  base:
+    - /srv/pillar
+
+# Aceptar automáticamente las sondas cuyo id empiece por 'sonda-'.
+# En producción, preferir aceptación manual (salt-key -a) o autosign_grains.
+autosign_file: /etc/salt/autosign.conf
+
+# API REST para el panel (salt-api / rest_cherrypy)
+# El único cliente de la API es el panel, que corre en este mismo host
+# (coordinador). Se enlaza a loopback: así no se expone salt-api en la interfaz
+# WireGuard/LAN y se evita la carrera de arranque (127.0.0.1 siempre está
+# disponible, mientras que 10.0.0.1 puede no existir aún cuando arranca salt-api).
+rest_cherrypy:
+  port: 8001
+  host: 127.0.0.1
+  disable_ssl: true          # tráfico ya cifrado por WireGuard; simplifica el demo
+
+# Salt 3006+ deshabilita por defecto los clientes de la API; el panel usa el
+# cliente 'local' (salt '<tgt>' <fun>), así que hay que habilitarlo.
+netapi_enable_clients:
+  - local
+
+# Autenticación de la API por ficheros (usuario 'saltdash')
+external_auth:
+  file:
+    ^filename: /etc/salt/dashboard-users
+    saltdash:
+      - .*
+      - '@runner'
+      - '@wheel'
+      - '@jobs'

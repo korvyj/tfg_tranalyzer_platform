@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel de sondas · TFG Tranalyzer</title>
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+  <header>
+    <h1>Estado de las sondas</h1>
+    <span id="updated" class="muted"></span>
+  </header>
+
+  {% if data.errors.salt %}
+    <p class="error">salt-api: {{ data.errors.salt }}</p>
+  {% endif %}
+  {% if data.errors.mongo %}
+    <p class="error">MongoDB: {{ data.errors.mongo }}</p>
+  {% endif %}
+
+  <table id="sondas">
+    <thead>
+      <tr>
+        <th>Sonda</th><th>Conexión</th><th>Captura</th>
+        <th>Colección</th><th>Flujos</th><th>Últimos 5&nbsp;min</th><th>Último flujo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Relleno por JS; el render inicial sirve de fallback sin JS -->
+      {% for s in data.sondas %}
+      <tr>
+        <td><a href="/sonda/{{ s.id }}">{{ s.id }}</a></td>
+        <td>{{ 'online' if s.online else 'offline' }}</td>
+        <td>{{ 'capturando' if s.capturing else 'parada' }}</td>
+        <td>{{ s.collection }}</td>
+        <td>{{ s.flows }}</td>
+        <td>{{ s.flows_5m }}</td>
+        <td>{{ (s.last_seen_s ~ ' s') if s.last_seen_s is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script src="/static/common.js?v=1"></script>
+  <script src="/static/app.js?v=3"></script>
+</body>
+</html>

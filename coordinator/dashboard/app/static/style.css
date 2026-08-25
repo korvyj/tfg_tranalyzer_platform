@@ -1,0 +1,377 @@
+:root { --bg:#0f1419; --fg:#e6e6e6; --muted:#a2adba; --ok:#3fb950; --bad:#f85149; --line:#242c37; }
+
+/* Iconos SVG (biblioteca inline) — render uniforme en todo SO/navegador */
+.ic { width:1.05em; height:1.05em; display:inline-block; vertical-align:-0.15em;
+  fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+h2 .ic, h3 .ic { margin-right:.3rem; }
+.tab .ic { margin-right:.25rem; }
+.btn .ic { margin-right:.2rem; }
+.sic .ic { width:1.5rem; height:1.5rem; vertical-align:middle; color:#58a6ff; }
+.uptime-badge .ic { margin-right:.15rem; }
+* { box-sizing: border-box; }
+body { margin:0; padding:2rem; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+header { display:flex; align-items:baseline; gap:1rem; margin-bottom:1.5rem; }
+h1 { font-size:1.4rem; margin:0; }
+.muted { color:var(--muted); font-size:.85rem; }
+.error { color:var(--bad); background:rgba(248,81,73,.1); padding:.5rem .75rem; border-radius:6px; }
+table { border-collapse:collapse; width:100%; max-width:1000px; }
+th, td { text-align:left; padding:.55rem .75rem; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.03em; }
+td { font-variant-numeric: tabular-nums; }
+.dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; margin-right:.4rem; vertical-align:middle; }
+.dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
+.pill { font-size:.8rem; padding:.1rem .5rem; border-radius:999px; border:1px solid var(--line); }
+.pill.on { color:var(--ok); border-color:var(--ok); }
+.pill.off { color:var(--muted); }
+
+/* --- Página de detalle de la sonda --- */
+a { color:#58a6ff; text-decoration:none; }
+a:hover { text-decoration:underline; }
+.back { color:var(--muted); }
+.mono { font-family: ui-monospace, monospace; }
+h2 { font-size:1rem; margin:1.5rem 0 .6rem; color:var(--fg); }
+.ok { color:var(--ok); } .bad { color:var(--bad); }
+
+.cards { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:.5rem; }
+.card { display:flex; flex-direction:column; gap:.2rem; padding:.6rem .9rem;
+  border:1px solid var(--line); border-radius:8px; min-width:120px; }
+.card .k { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.03em; }
+.card .v { font-size:1.15rem; font-variant-numeric:tabular-nums; }
+
+.panel { margin-top:1rem; padding:1rem; border:1px solid var(--line); border-radius:8px; max-width:1000px; }
+.controls { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.6rem; align-items:center; }
+.btn { background:#1b2430; color:var(--fg); border:1px solid var(--line);
+  padding:.4rem .8rem; border-radius:6px; cursor:pointer; font-size:.85rem; }
+.btn:hover { border-color:#58a6ff; }
+.txt { background:var(--bg); color:var(--fg); border:1px solid var(--line);
+  padding:.4rem .5rem; border-radius:6px; font-family:ui-monospace, monospace; }
+.action-out { margin:.4rem 0 0; padding:.6rem .75rem; background:#0b0f14;
+  border:1px solid var(--line); border-radius:6px; white-space:pre-wrap;
+  font-size:.8rem; max-height:220px; overflow:auto; }
+
+.btn.danger { border-color:var(--bad); color:var(--bad); }
+.btn.danger:hover { background:rgba(248,81,73,.12); border-color:var(--bad); }
+.small { font-size:.8rem; }
+select.txt, select#window { background:#1b2430; color:var(--fg); border:1px solid var(--line);
+  border-radius:6px; padding:.15rem .3rem; font-size:.85rem; }
+select#window { margin-left:.15rem; }
+code { font-family:ui-monospace, monospace; background:#0b0f14; padding:.05rem .3rem; border-radius:4px; }
+.cfg { display:flex; flex-wrap:wrap; gap:.75rem 1rem; align-items:flex-end; }
+.cfg label { display:flex; flex-direction:column; gap:.25rem; font-size:.78rem; color:var(--muted); }
+.cfg input { min-width:150px; }
+
+/* ===== Rediseño página de sonda (v4) ===== */
+
+/* Hero: estado + interfaz + flujos, lo más importante arriba */
+.head-meta { display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; margin-left:auto; }
+
+/* Navegación por pestañas */
+.tabs { display:flex; gap:.3rem; border-bottom:1px solid var(--line); margin:0 0 1.3rem; flex-wrap:wrap; }
+.tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted);
+  padding:.55rem 1.1rem; font-size:.95rem; cursor:pointer; border-radius:6px 6px 0 0; }
+.tab:hover { color:var(--fg); background:#141b24; }
+.tab.active { color:var(--fg); border-bottom-color:#58a6ff; font-weight:600; }
+.tabpanel { animation:fadein .18s ease; }
+@keyframes fadein { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+.tabpanel > .panel:first-child, .tabpanel > .summary:first-child { margin-top:0; }
+.panel .controlbar { margin:0; }
+
+/* Gráfica + Top talkers lado a lado */
+.chart-row { display:flex; gap:1rem; align-items:stretch; flex-wrap:wrap; }
+.chart-row .chart-panel { flex:1 1 460px; min-width:0; margin-top:0; }
+.talkers-panel { flex:1 1 320px; margin-top:0; }
+/* Cabeceras de ambas tarjetas al mismo nivel */
+.chart-panel .table-head, .talkers-panel .table-head { margin-top:0; }
+.talkers-h { margin:.7rem 0 .3rem; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+/* Mini-barras de "IPs más activas": IP azul clicable con espacio suficiente */
+.talkers td { padding:.3rem .5rem; }
+.talkers .lbl { color:#58a6ff; font-size:.82rem; white-space:nowrap; }
+.talkers .barcell { width:26%; }
+.talkers .num { font-size:.82rem; white-space:nowrap; }
+.talkers tr.clickable .lbl::after { content:none; }   /* sin la flecha de "filtrar" */
+
+/* Punto de estado en la cabecera (siempre con estado, nunca vacío) */
+.updated-line { display:inline-flex; align-items:center; gap:.35rem; }
+.hdr-dot { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; background:var(--muted); flex:none; }
+.hdr-dot.ok { background:var(--ok); box-shadow:0 0 6px var(--ok); }
+.hdr-dot.warn { background:#d29922; }
+.hdr-dot.off { background:var(--bad); }
+
+/* Feedback inmediato al filtrar la tabla */
+.table-scroll { position:relative; transition:opacity .12s ease; }
+.table-scroll.filtering { opacity:.4; }
+
+/* Marcador informativo junto a "Unknown" en la clasificación nDPI */
+.info-mark { color:#e3b341; cursor:help; margin-left:.3rem; }
+.info-mark .ic { width:.95em; height:.95em; vertical-align:-0.15em; }
+
+/* Mensaje de gráfica vacía (sonda sin datos / desconectada) */
+.ts-empty { fill:var(--muted); font-size:13px; }
+.ts-chart .grid.faint { opacity:.35; }
+.uptime-badge { font-size:.78rem; padding:.15rem .55rem; border-radius:999px;
+  border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
+.uptime-badge.on { color:var(--ok); border-color:rgba(63,185,80,.4); background:rgba(63,185,80,.08); }
+
+.hero { display:flex; justify-content:space-between; align-items:center; gap:1rem;
+  flex-wrap:wrap; padding:.7rem 1.1rem; margin-bottom:.8rem;
+  border:1px solid var(--line); border-radius:12px;
+  background:linear-gradient(135deg, rgba(31,111,235,.10), rgba(63,185,80,.05)); }
+.hero-left { display:flex; align-items:center; gap:.9rem; }
+.status-dot { width:.85rem; height:.85rem; border-radius:50%; flex:none;
+  box-shadow:0 0 0 4px rgba(255,255,255,.04); }
+.status-dot.ok { background:var(--ok); box-shadow:0 0 12px var(--ok); }
+.status-dot.bad { background:var(--bad); box-shadow:0 0 12px var(--bad); }
+.hero-title { font-size:1.25rem; font-weight:700; letter-spacing:.02em; }
+.hero-sub { color:var(--muted); font-size:.95rem; }
+.hero-right { display:flex; align-items:center; gap:1.2rem; }
+.hero-flows { font-size:1.1rem; color:var(--muted); }
+.hero-flows span:first-child { font-size:1.7rem; font-weight:700; color:var(--fg);
+  font-variant-numeric:tabular-nums; }
+.hero-flows .unit { font-size:.9rem; }
+.cap-badge, .badge { font-size:.8rem; padding:.2rem .6rem; border-radius:999px;
+  border:1px solid var(--line); white-space:nowrap; }
+.cap-badge.on, .badge.on { color:var(--ok); border-color:var(--ok); background:rgba(63,185,80,.10); }
+.cap-badge.off, .badge.off { color:var(--muted); }
+
+/* Métricas clave (KPIs) — fila compacta */
+.kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+  gap:.6rem; margin-bottom:.8rem; }
+.kpi { display:flex; align-items:baseline; justify-content:space-between; gap:.6rem;
+  padding:.45rem .8rem; border:1px solid var(--line); border-radius:9px; background:#141b24; }
+.kpi-k { color:var(--muted); font-size:.75rem; }
+.kpi-v { font-size:1.15rem; font-weight:600; font-variant-numeric:tabular-nums; }
+
+/* Tarjetas resumen — compactas, cifras grandes, con tendencia */
+.summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
+  gap:.6rem; margin-bottom:.8rem; }
+.scard { display:flex; align-items:center; gap:.65rem;
+  padding:.55rem .8rem; border:1px solid var(--line); border-radius:10px; background:#141b24; }
+.scard .sic { font-size:1.6rem; line-height:1; }
+.scard .sbody { display:flex; flex-direction:column; gap:.05rem; min-width:0; }
+.scard .srow { display:flex; align-items:baseline; gap:.4rem; }
+.scard .sv { font-size:1.7rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.05; }
+.scard.big .sv { font-size:2.1rem; }
+.scard .sk { color:var(--muted); font-size:.74rem; white-space:nowrap; }
+.strend { font-size:.72rem; font-weight:600; }
+.strend.up { color:var(--ok); }
+.strend.down { color:var(--bad); }
+
+/* Animación al cambiar un valor numérico */
+@keyframes bump { 0%{ transform:scale(1); } 30%{ transform:scale(1.14); color:#79c0ff; } 100%{ transform:scale(1); } }
+.bump { animation:bump .45s ease-out; display:inline-block; }
+
+/* Barra de control compacta */
+.controlbar { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 1.4rem; }
+
+/* Panel plegable de detalles/configuración */
+.collapse { margin:1.5rem 0 .5rem; border:1px solid var(--line); border-radius:10px;
+  background:#10161e; padding:0 1rem; }
+.collapse > summary { cursor:pointer; padding:.8rem .2rem; font-weight:600; font-size:.95rem;
+  list-style:none; }
+.collapse > summary::-webkit-details-marker { display:none; }
+.collapse > summary::before { content:"▸ "; color:var(--muted); }
+.collapse[open] > summary::before { content:"▾ "; }
+.collapse[open] { padding-bottom:1rem; }
+.collapse .panel { background:#0d1219; }
+.collapse h3 { font-size:.88rem; margin:.4rem 0 .5rem; }
+
+/* Sub-panel plegable (Configuración avanzada) */
+.subcollapse { margin:1rem 0 .2rem; background:#0d1219; }
+.subcollapse > summary { font-size:.88rem; padding:.6rem .2rem; }
+.cfg-group { border:1px solid var(--line); border-radius:8px; padding:.6rem 1rem 1rem;
+  margin:.4rem 0 .8rem; display:flex; flex-wrap:wrap; gap:.75rem 1rem; flex:1 1 100%; }
+.cfg-group legend { color:var(--muted); font-size:.78rem; padding:0 .4rem; }
+/* El botón «Guardar» cae a su propia línea, alineado a la izquierda */
+#cfg-form { align-items:flex-start; }
+
+/* Punto de estado (badge visual) en el panel de Estado */
+.info-group .dot { width:.75rem; height:.75rem; margin:0; }
+.info-group dd { display:flex; justify-content:flex-end; align-items:center; }
+
+/* Direcciones IP como badges */
+.ipbadges { display:flex; flex-wrap:wrap; gap:.3rem; justify-content:flex-end; }
+.ipbadge { font-size:.72rem; padding:.1rem .45rem; border:1px solid var(--line);
+  border-radius:6px; background:#0d1219; }
+
+/* Botones: estado deshabilitado y spinner de carga */
+.btn:disabled { opacity:.45; cursor:not-allowed; }
+.btn.loading { opacity:1 !important; position:relative; color:transparent !important;
+  pointer-events:none; }
+.btn.loading::after { content:""; position:absolute; top:50%; left:50%;
+  width:.95rem; height:.95rem; margin:-.48rem 0 0 -.48rem; border-radius:50%;
+  border:2px solid rgba(255,255,255,.35); border-top-color:#fff;
+  animation:spin .6s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* Barra de control: botones más pequeños (el foco es el análisis, no el control) */
+.controlbar .btn { padding:.28rem .6rem; font-size:.78rem; }
+
+/* Gráfica de evolución temporal (SVG) */
+.chart-panel .table-head { margin-top:0; }
+.ts-chart { width:100%; margin-top:.3rem; }
+.ts-chart .tsvg { width:100%; height:auto; display:block; }
+.ts-chart .grid { stroke:var(--line); stroke-width:1; }
+.ts-chart .yl { fill:var(--muted); font-size:11px; text-anchor:end; }
+.ts-chart .xl { fill:var(--muted); font-size:11px; }
+.ts-legend { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin-top:.5rem; }
+.ts-legend .lg { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; color:var(--fg); }
+.ts-legend .sw { width:.7rem; height:.7rem; border-radius:2px; display:inline-block; }
+
+/* Resaltado de tráfico "Unknown" */
+.warn-row .lbl, .warn-row td:nth-child(6) { color:#e3b341; }
+.bars .bar.warn { background:linear-gradient(90deg,#9e6a00,#d29922); }
+tr.warn-row td { background:rgba(210,153,34,.06); }
+
+/* Barra de filtros de la tabla de flujos */
+.filterbar { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.5rem 0; }
+.filterbar .txt { font-size:.8rem; padding:.25rem .4rem; }
+.btn.small { padding:.25rem .55rem; font-size:.78rem; }
+
+/* Cabeceras ordenables */
+table.sortable thead th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
+table.sortable thead th[data-sort]:hover { color:var(--fg); }
+table.sortable thead th.sorted { color:#58a6ff; }
+table.sortable thead th[data-dir="asc"]::after { content:" ▲"; font-size:.7em; }
+table.sortable thead th[data-dir="desc"]::after { content:" ▼"; font-size:.7em; }
+
+/* Búsquedas de IP recientes */
+.recent-searches { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
+.ip-recent { display:inline-flex; flex-wrap:wrap; gap:.3rem; }
+.chip { background:#1b2430; color:#58a6ff; border:1px solid var(--line); border-radius:999px;
+  padding:.12rem .6rem; font-size:.78rem; cursor:pointer; }
+.chip:hover { border-color:#58a6ff; }
+
+/* Barras de clasificación clicables (filtran la tabla) */
+table.bars tr.clickable { cursor:pointer; }
+table.bars tr.clickable:hover td { background:rgba(88,166,255,.10); }
+table.bars tr.clickable .lbl::after { content:" ⤵"; color:var(--muted); opacity:0; font-size:.8em; }
+table.bars tr.clickable:hover .lbl::after { opacity:1; }
+
+/* Chips de filtros activos (ruta de drill-down) */
+.active-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin:.5rem 0; }
+.fchip { background:rgba(88,166,255,.12); border:1px solid #1f6feb; color:#cbe3ff;
+  border-radius:999px; padding:.12rem .55rem; font-size:.78rem; cursor:pointer; }
+.fchip:hover { background:rgba(248,81,73,.15); border-color:var(--bad); }
+.fchip b { color:var(--muted); margin-left:.15rem; }
+
+/* Filas de flujo clicables (abren el detalle) */
+#t-recent tbody tr.frow { cursor:pointer; }
+#t-recent tbody tr.frow:hover td { background:rgba(88,166,255,.07); }
+.ipcell, .peer-ip { color:#58a6ff; cursor:pointer; }
+.ipcell:hover, .peer-ip:hover { text-decoration:underline; }
+
+/* Gráfica: envoltorio con posición para el tooltip */
+.ts-wrap { position:relative; }
+.ts-cursor { stroke:#58a6ff; stroke-width:1; stroke-dasharray:3 3; opacity:.7; }
+.ts-brush { fill:rgba(88,166,255,.15); stroke:#58a6ff; stroke-width:1; }
+.tsvg { cursor:crosshair; }
+.ts-tip { position:absolute; pointer-events:none; z-index:20; background:#0b0f14ee;
+  border:1px solid var(--line); border-radius:7px; padding:.45rem .6rem; font-size:.76rem;
+  box-shadow:0 6px 20px rgba(0,0,0,.5); min-width:120px; }
+.ts-tip .tt-time { color:var(--muted); margin-bottom:.25rem; }
+.ts-tip .sw { display:inline-block; width:.65rem; height:.65rem; border-radius:2px; margin-right:.3rem; }
+.ts-legend .lg { cursor:pointer; user-select:none; }
+.ts-legend .lg.off { opacity:.4; text-decoration:line-through; }
+
+/* Tabla de flujos: scroll con cabecera fija + paginación */
+.table-scroll { max-height:460px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
+.table-scroll table { max-width:none; }
+.table-scroll thead th { position:sticky; top:0; z-index:2; background:#111823;
+  box-shadow:inset 0 -1px 0 var(--line); }
+.table-controls { display:flex; flex-direction:column; gap:.5rem; margin-top:.3rem; }
+/* Fila inferior de la tabla: paginación a la izquierda, filtrar/filas/export a la derecha */
+.table-footer { display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; margin:.7rem 0; }
+.pager { display:flex; align-items:center; gap:1rem; }
+.pager .btn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* Tabla de metadatos completos en el panel de detalle */
+.meta-table { width:100%; font-size:.76rem; }
+.meta-table td { padding:.2rem .4rem; border-bottom:1px solid var(--line); word-break:break-all; }
+.meta-table td:first-child { white-space:nowrap; width:40%; }
+#flow-meta { margin-top:1rem; }
+
+/* Panel lateral de detalle de flujo */
+.drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1500; }
+.drawer { position:fixed; top:0; right:0; height:100%; width:min(380px,92vw);
+  background:#0f151d; border-left:1px solid var(--line); z-index:1600; overflow:auto;
+  transform:translateX(100%); transition:transform .25s ease; padding:1rem 1.2rem; }
+.drawer.open { transform:none; }
+.drawer-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
+  border-bottom:1px solid var(--line); padding-bottom:.6rem; margin-bottom:.6rem; }
+.drawer-head h3 { margin:0; font-size:1rem; }
+.drawer-dl { display:grid; grid-template-columns:auto 1fr; gap:.4rem .8rem; margin:0; }
+.drawer-dl dt { color:var(--muted); font-size:.78rem; }
+.drawer-dl dd { margin:0; font-size:.82rem; text-align:right; word-break:break-all; }
+.drawer-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
+
+/* Info agrupada por tipo */
+.info-groups { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr));
+  gap:1rem; margin-bottom:.5rem; }
+.info-group { border:1px solid var(--line); border-radius:10px; padding:.8rem 1rem; }
+.info-group h3 { margin:.1rem 0 .6rem; font-size:.9rem; }
+.info-group dl { display:grid; grid-template-columns:auto 1fr; gap:.3rem .8rem; margin:0; }
+.info-group dt { color:var(--muted); font-size:.78rem; }
+.info-group dd { margin:0; font-size:.85rem; text-align:right; word-break:break-word; }
+
+/* Botones de control con color por acción */
+.btn-start   { background:#238636; border-color:#2ea043; color:#fff; }
+.btn-start:hover   { background:#2ea043; }
+.btn-stop    { background:#a4292b; border-color:#da3633; color:#fff; }
+.btn-stop:hover    { background:#da3633; }
+.btn-restart { background:#9e6a00; border-color:#d29922; color:#fff; }
+.btn-restart:hover { background:#bb8009; }
+.btn-reset   { background:#3a424c; border-color:#6e7681; color:#e6e6e6; }
+.btn-reset:hover   { background:#4a545f; }
+.btn-purge   { background:#7d1416; border-color:#b62324; color:#fff; }
+.btn-purge:hover   { background:#a01c1e; }
+.btn-iface   { background:#1b2430; border-color:#1f6feb; color:#e6e6e6; }
+.btn-iface:hover   { background:#233043; }
+a.btn { text-decoration:none; display:inline-block; }
+
+/* Toasts */
+.toasts { position:fixed; top:1rem; right:1rem; display:flex; flex-direction:column;
+  gap:.5rem; z-index:1000; max-width:min(360px, 90vw); }
+.toast { padding:.7rem .9rem; border-radius:8px; font-size:.85rem; color:#fff;
+  background:#30363d; border:1px solid var(--line); white-space:pre-line; cursor:pointer;
+  opacity:0; transform:translateX(20px); transition:opacity .25s, transform .25s;
+  box-shadow:0 6px 20px rgba(0,0,0,.4); }
+.toast.show { opacity:1; transform:none; }
+.toast.ok   { background:#1b4b2a; border-color:var(--ok); }
+.toast.bad  { background:#5c1a1a; border-color:var(--bad); }
+.toast.warn { background:#5c4406; border-color:#d29922; }
+
+/* Buscador de IP */
+.ip-result { margin-top:.8rem; padding:.8rem 1rem; border:1px solid var(--line);
+  border-radius:8px; background:#0b0f14; }
+.ipl-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:1rem; }
+.ipl h4 { margin:.2rem 0 .4rem; font-size:.82rem; color:var(--fg); }
+.ipl ul { margin:0; padding-left:1rem; font-size:.82rem; }
+.ipl li { margin:.1rem 0; }
+
+/* Cabecera de tabla con herramientas + filtros de protocolo */
+.table-head { display:flex; align-items:center; justify-content:space-between;
+  gap:1rem; flex-wrap:wrap; margin-top:1.5rem; }
+.table-head h2 { margin:0; }
+.table-tools { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+.toggles { display:flex; flex-wrap:wrap; gap:.3rem .8rem; align-items:center;
+  margin:.5rem 0; font-size:.8rem; }
+.chk { display:inline-flex; align-items:center; gap:.25rem; color:var(--fg);
+  padding:.1rem .4rem; border:1px solid var(--line); border-radius:6px; cursor:pointer; }
+
+/* Pie de página (versión Tranalyzer en pequeño, estilo RRSS) */
+.pagefoot { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+  margin:2.5rem 0 .5rem; padding-top:1rem; border-top:1px solid var(--line); }
+
+.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1rem; }
+/* Las secciones de análisis son el contenido principal: se destacan como tarjetas. */
+.grid > section { border:1px solid var(--line); border-radius:10px; padding:.4rem 1rem 1rem;
+  background:#0f151d; }
+.grid > section h2 { margin-top:.6rem; font-size:1.02rem; }
+table.bars { width:100%; }
+table.bars td { border-bottom:1px solid var(--line); padding:.35rem .5rem; }
+table.bars .lbl { white-space:nowrap; }
+table.bars .num { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+table.bars .barcell { width:60%; }
+table.bars .bar { display:block; height:.7rem; border-radius:3px;
+  background:linear-gradient(90deg,#1f6feb,#58a6ff); min-width:2px; }

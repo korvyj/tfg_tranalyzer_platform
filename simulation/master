@@ -1,0 +1,43 @@
+# Configuración del salt-master para la SIMULACIÓN.
+#
+# Igual que coordinator/salt/master pero con dos file_roots para evitar montajes
+# anidados (states y _modules se montan por separado, sin uno dentro del otro):
+#   /srv/salt        -> coordinator/salt/states  (tranalyzer.sls, top.sls)
+#   /srv/salt-extra  -> coordinator/salt         (aporta el subdir _modules/)
+# Salt busca '_modules' en cada file_root, así que 'saltutil.sync_modules'
+# encuentra /srv/salt-extra/_modules/tranalyzer.py.
+
+# El salt-master escucha en la IP de la red simulada (hace de WireGuard).
+interface: 10.0.0.1
+
+file_roots:
+  base:
+    - /srv/salt
+    - /srv/salt-extra
+pillar_roots:
+  base:
+    - /srv/pillar
+
+# Aceptar automáticamente las sondas cuyo id empiece por 'sonda-'.
+autosign_file: /etc/salt/autosign.conf
+
+# API REST para el panel (salt-api / rest_cherrypy)
+rest_cherrypy:
+  port: 8001
+  host: 10.0.0.1
+  disable_ssl: true
+
+# Salt 3006+ deshabilita por defecto los clientes de la API; el panel usa
+# el cliente 'local' (salt '<tgt>' <fun>), así que hay que habilitarlo.
+netapi_enable_clients:
+  - local
+
+# Autenticación de la API por ficheros (usuario 'saltdash')
+external_auth:
+  file:
+    ^filename: /etc/salt/dashboard-users
+    saltdash:
+      - .*
+      - '@runner'
+      - '@wheel'
+      - '@jobs'

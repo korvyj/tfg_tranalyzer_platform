@@ -1,0 +1,321 @@
+{% macro ic(n) %}<svg class="ic"><use href="#ic-{{ n }}"/></svg>{% endmacro %}<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ data.id }} · Panel de sondas TFG</title>
+  <link rel="stylesheet" href="/static/style.css?v=22">
+</head>
+<body data-sonda="{{ data.id }}">
+  <!-- Biblioteca de iconos SVG (estilo Lucide, MIT). Render consistente en todo SO/navegador. -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="ic-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+    <symbol id="ic-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="ic-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+    <symbol id="ic-building" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
+    <symbol id="ic-plug" viewBox="0 0 24 24"><path d="M12 22v-5M9 8V2M15 8V2M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="ic-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></symbol>
+    <symbol id="ic-wifi" viewBox="0 0 24 24"><path d="M12 20h.01M2 8.82a15 15 0 0 1 20 0M5 12.86a10 10 0 0 1 14 0M8.5 16.43a5 5 0 0 1 7 0"/></symbol>
+    <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="ic-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    <symbol id="ic-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></symbol>
+    <symbol id="ic-box" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></symbol>
+    <symbol id="ic-app" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 4v4M2 8h20M6 4v4"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="ic-square" viewBox="0 0 24 24"><rect width="14" height="14" x="5" y="5" rx="2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+    <symbol id="ic-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="ic-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></symbol>
+    <symbol id="ic-hourglass" viewBox="0 0 24 24"><path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  </svg>
+
+  <header>
+    <h1><a href="/" class="back">← sondas</a> / {{ data.id }}</h1>
+    <div class="head-meta">
+      <span id="uptime-badge" class="uptime-badge" title="Tiempo capturando">{{ ic("clock") }} —</span>
+      <span class="updated-line"><span id="hdr-dot" class="hdr-dot off" title="Estado"></span><span id="updated" class="muted small">—</span></span>
+    </div>
+  </header>
+
+  <!-- Notificaciones tipo toast (acciones de control) -->
+  <div id="toasts" class="toasts"></div>
+
+  <p id="errors"></p>
+
+  <!-- STATUS STRIP: siempre visible, por encima de las pestañas -->
+  <section class="hero" id="hero">
+    <div class="hero-left">
+      <span class="status-dot" id="hero-dot"></span>
+      <div>
+        <div class="hero-title" id="hero-status">SONDA —</div>
+        <div class="hero-sub mono" id="hero-iface">—</div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <span class="cap-badge" id="hero-cap">—</span>
+      <div class="hero-flows"><span id="hero-flows">—</span> <span class="unit">flujos</span></div>
+    </div>
+  </section>
+
+  <!-- Navegación por pestañas -->
+  <nav class="tabs" role="tablist">
+    <button class="tab" data-tab="resumen" role="tab">{{ ic("activity") }} Resumen</button>
+    <button class="tab" data-tab="analisis" role="tab">{{ ic("search") }} Análisis</button>
+    <button class="tab" data-tab="config" role="tab">{{ ic("sliders") }} Configuración</button>
+  </nav>
+
+  <!-- ===================== TAB: RESUMEN ===================== -->
+  <div class="tabpanel" id="tab-resumen" role="tabpanel">
+    <!-- Tarjetas resumen (variedad del tráfico) -->
+    {% set tarjetas = [
+      ('flows',     'activity', 'Flujos',         'big'),
+      ('ips',       'server',   'IPs únicas',     'big'),
+      ('countries', 'globe',    'Países',         ''),
+      ('protocols', 'tag',      'Protocolos L7',  ''),
+      ('orgs',      'building', 'Organizaciones', ''),
+    ] %}
+    <section class="summary">
+      {% for clave, icono, etiqueta, tam in tarjetas %}
+      <div class="{{ ('scard ' ~ tam)|trim }}"><span class="sic">{{ ic(icono) }}</span><div class="sbody"><span class="srow"><span class="sv" id="s-{{ clave }}">—</span><span class="strend" id="tr-{{ clave }}"></span></span><span class="sk">{{ etiqueta }}</span></div></div>
+      {% endfor %}
+    </section>
+
+    <section class="kpis">
+      <div class="kpi"><span class="kpi-k">{{ ic("clock") }} Últimos
+        <select id="window">
+          <option value="60" selected>1 min</option>
+          <option value="300">5 min</option>
+          <option value="900">15 min</option>
+          <option value="3600">60 min</option>
+        </select></span><span class="kpi-v" id="k-lastmin">—</span></div>
+      <div class="kpi"><span class="kpi-k">{{ ic("clock") }} Último flujo</span><span class="kpi-v" id="k-last">—</span></div>
+      <div class="kpi"><span class="kpi-k">{{ ic("hourglass") }} Periodo con datos</span><span class="kpi-v" id="k-period">—</span></div>
+    </section>
+
+    <!-- Evolución temporal + Top talkers, lado a lado -->
+    <div class="chart-row">
+      <section class="panel chart-panel">
+        <div class="table-head">
+          <h2>{{ ic("chart") }} Evolución temporal</h2>
+          <div class="table-tools">
+            <select id="ts-by" class="txt">
+              <option value="total">Flujos (total)</option>
+              <option value="protocol">Por protocolo L7</option>
+              <option value="country">Por país</option>
+              <option value="l4">Por protocolo L4</option>
+            </select>
+            <select id="ts-window" class="txt">
+              <option value="300">5 min</option>
+              <option value="900" selected>15 min</option>
+              <option value="3600">60 min</option>
+            </select>
+            <button class="btn btn-reset small" id="ts-reset" hidden>⤢ Restablecer zoom</button>
+          </div>
+        </div>
+        <div class="ts-wrap">
+          <div id="ts-chart" class="ts-chart"></div>
+          <div id="ts-tip" class="ts-tip" hidden></div>
+        </div>
+        <div id="ts-legend" class="ts-legend"></div>
+        <p class="muted small">Arrastra sobre la gráfica para hacer zoom · pulsa una serie de la leyenda para ocultarla.</p>
+      </section>
+
+      <section class="panel talkers-panel">
+        <div class="table-head"><h2>{{ ic("server") }} IPs más activas</h2></div>
+        <p class="muted small">IPs con más flujos en la ventana. Pulsa una para investigarla.</p>
+        <h4 class="talkers-h">Origen</h4>
+        <table class="bars talkers" id="top-src"><tbody><tr><td class="muted small">—</td></tr></tbody></table>
+        <h4 class="talkers-h">Destino</h4>
+        <table class="bars talkers" id="top-dst"><tbody><tr><td class="muted small">—</td></tr></tbody></table>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: ANÁLISIS ===================== -->
+  <div class="tabpanel" id="tab-analisis" role="tabpanel" hidden>
+    <!-- Clasificaciones -->
+    <div class="grid">
+      <section>
+        <h2>{{ ic("tag") }} Clasificación L7 (nDPI)</h2>
+        <table class="bars" id="t-ndpi"><tbody></tbody></table>
+      </section>
+      <section>
+        <h2>{{ ic("building") }} Organizaciones destino (GeoIP)</h2>
+        <table class="bars" id="t-orgs"><tbody></tbody></table>
+      </section>
+      <section>
+        <h2>{{ ic("globe") }} Países destino (GeoIP)</h2>
+        <table class="bars" id="t-countries"><tbody></tbody></table>
+      </section>
+      <section>
+        <h2 title="Servicio deducido del puerto de destino (portClassifier)">{{ ic("plug") }} Servicio por puerto</h2>
+        <table class="bars" id="t-ports"><tbody></tbody></table>
+      </section>
+    </div>
+
+    <!-- Buscador de IP (investigación) -->
+    <section class="panel ip-panel">
+      <h2>{{ ic("search") }} Investigar una IP</h2>
+      <p class="muted small">Perfil de tráfico de una IP: protocolos, países, organizaciones y pares (peers) con los que ha intercambiado flujos. También puedes pulsar cualquier IP de la tabla de flujos.</p>
+      <div class="controls">
+        <input id="ip-input" class="txt" placeholder="p. ej. 192.168.1.133" size="24"
+               list="ip-list" autocomplete="off">
+        <datalist id="ip-list"></datalist>
+        <button class="btn btn-iface" id="ip-btn">Buscar</button>
+        <button class="btn btn-reset" id="ip-clear" hidden>Limpiar</button>
+      </div>
+      <div class="recent-searches">
+        <span class="muted small">Búsquedas recientes:</span>
+        <span id="ip-recent" class="ip-recent"><span class="muted small">ninguna todavía</span></span>
+      </div>
+      <div id="ip-result" class="ip-result" hidden></div>
+    </section>
+
+    <!-- Últimos flujos: selects de filtro arriba; tabla; filtrar/filas/export debajo -->
+    <section>
+      <div class="table-head">
+        <h2>{{ ic("list") }} Últimos flujos</h2>
+      </div>
+      <div class="filterbar">
+        {% for fid, etiqueta in [
+             ('f-country', 'País: todos'), ('f-org', 'Organización: todas'),
+             ('f-l4', 'L4: todos'), ('f-proto', 'Protocolo: todos'),
+             ('f-service', 'Aplicación: todas')] %}
+        <select id="{{ fid }}" class="txt"><option value="">{{ etiqueta }}</option></select>
+        {% endfor %}
+        <button id="f-clear" class="btn btn-reset small">Limpiar filtros</button>
+      </div>
+      <div id="active-filters" class="active-filters"></div>
+      <div class="table-scroll">
+        <table id="t-recent" class="sortable">
+          <thead><tr>
+            <th data-sort="ts">Hora</th>
+            <th data-sort="src">Origen</th>
+            <th data-sort="dst">Destino</th>
+            <th data-sort="dport">Puerto</th>
+            <th data-sort="l4">L4</th>
+            <th data-sort="proto">nDPI</th>
+            <th data-sort="service" title="Aplicación identificada por nDPI (inspección de contenido)">Aplicación</th>
+            <th data-sort="org">Organización</th>
+            <th data-sort="country">País</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Debajo de la tabla, en la misma fila: paginación + filtrar/filas/exportación -->
+      <div class="table-footer">
+        <div class="pager">
+          <button class="btn btn-reset small" id="pg-prev">‹ Anterior</button>
+          <span id="pg-info" class="muted small"></span>
+          <button class="btn btn-reset small" id="pg-next">Siguiente ›</button>
+        </div>
+        <div class="table-tools">
+          <input id="recent-filter" class="txt" placeholder="Filtrar…" size="16">
+          <label class="muted small">Filas
+            <select id="page-size" class="txt">
+              <option value="10">10</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <a class="btn btn-iface" id="exp-csv" href="/api/sonda/{{ data.id }}/export?format=csv">{{ ic("download") }} CSV</a>
+          <a class="btn btn-iface" id="exp-json" href="/api/sonda/{{ data.id }}/export?format=json">{{ ic("download") }} JSON</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== TAB: CONFIGURACIÓN ===================== -->
+  <div class="tabpanel" id="tab-config" role="tabpanel" hidden>
+    <section class="panel">
+      <h2>{{ ic("sliders") }} Control de captura</h2>
+      <div class="controlbar">
+        <button class="btn btn-start"   data-action="start">{{ ic("play") }} Iniciar</button>
+        <button class="btn btn-stop"    data-action="stop">{{ ic("square") }} Detener</button>
+        <button class="btn btn-restart" data-action="restart">{{ ic("refresh") }} Reiniciar</button>
+        <button class="btn btn-reset"   data-action="apply_config" title="Regenera sonda.env desde el pillar y reinicia">{{ ic("rotate") }} Restablecer</button>
+        <button class="btn btn-purge"   id="btn-clear" title="Borra los flujos de esta sonda en MongoDB">{{ ic("trash") }} Vaciar datos</button>
+      </div>
+    </section>
+
+    <section class="info-groups">
+      <div class="info-group">
+        <h3>{{ ic("wifi") }} Estado</h3>
+        <dl>
+          <dt>Online</dt><dd><span class="dot" id="i-online"></span></dd>
+          <dt>Capturando</dt><dd><span class="dot" id="i-cap"></span></dd>
+          <dt>Interfaz</dt><dd class="mono" id="i-iface">—</dd>
+          <dt>Total de flujos</dt><dd id="i-flows">—</dd>
+        </dl>
+      </div>
+      <div class="info-group">
+        <h3>{{ ic("info") }} Información</h3>
+        <dl>
+          <dt>Sistema operativo</dt><dd id="i-os">—</dd>
+          <dt>Direcciones IP</dt><dd><div class="ipbadges" id="i-ips">—</div></dd>
+        </dl>
+      </div>
+      <div class="info-group">
+        <h3>{{ ic("database") }} Base de datos (MongoDB)</h3>
+        <dl>
+          <dt>Servidor</dt><dd class="mono" id="i-mhost">—</dd>
+          <dt>Puerto</dt><dd class="mono" id="i-mport">—</dd>
+          <dt>Base de datos</dt><dd class="mono" id="i-mdb">—</dd>
+          <dt>Colección</dt><dd class="mono" id="i-mtable">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Interfaz de captura</h3>
+      <div class="controls">
+        <select id="iface-sel" class="txt"></select>
+        <button class="btn btn-iface" data-action="set_interface">Cambiar interfaz</button>
+      </div>
+    </section>
+
+    <details class="collapse subcollapse">
+      <summary>{{ ic("sliders") }} Configuración avanzada (sonda.env)</summary>
+      <p class="muted small">Parámetros de conexión a la base de datos. Se escriben en <code>/etc/tranalyzer/sonda.env</code> y reinician la captura. «Restablecer» revierte estos cambios a los valores gestionados por Salt (pillar).</p>
+      <form id="cfg-form" class="cfg">
+        <fieldset class="cfg-group">
+          <legend>Base de datos (MongoDB)</legend>
+          <label>Servidor <input name="MONGO_HOST" class="txt"></label>
+          <label>Puerto <input name="MONGO_PORT" class="txt" size="6"></label>
+          <label>Base de datos <input name="MONGO_DBNAME" class="txt"></label>
+          <label>Colección <input name="MONGO_TABLE_NAME" class="txt"></label>
+        </fieldset>
+        <button class="btn btn-iface" type="submit">Guardar configuración</button>
+      </form>
+    </details>
+  </div>
+
+  <footer class="pagefoot">
+    <span class="muted small">Colección <span class="mono">{{ data.collection }}</span></span>
+    <span class="muted small" id="foot-version">Tranalyzer —</span>
+  </footer>
+
+  <!-- Panel lateral de detalle de un flujo -->
+  <div id="drawer-overlay" class="drawer-overlay" hidden></div>
+  <aside id="flow-drawer" class="drawer" hidden aria-label="Detalle del flujo">
+    <div class="drawer-head">
+      <h3>{{ ic("file") }} Detalle del flujo</h3>
+      <button id="drawer-close" class="btn btn-reset small" aria-label="Cerrar">✕</button>
+    </div>
+    <div id="drawer-body" class="drawer-body"></div>
+  </aside>
+
+  <script src="/static/common.js?v=1"></script>
+  <script src="/static/sonda.js?v=23"></script>
+</body>
+</html>

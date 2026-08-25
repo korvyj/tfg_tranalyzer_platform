@@ -1,0 +1,64 @@
+<mxGraphModel dx="1000" dy="700" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1160" pageHeight="560" math="0" shadow="0" adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="title" value="Plano de control: cómo llega una orden a la sonda (SaltStack)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+      <mxGeometry x="40" y="20" width="800" height="30" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="op" value="Operador / botón del panel&#10;POST /api/sonda/&amp;lt;id&amp;gt;/action&#10;o  salt 'sonda-1' tranalyzer.start" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="40" y="120" width="230" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="api" value="salt-api (rest_cherrypy)&#10;login → token&#10;client: local" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="330" y="120" width="200" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="master" value="salt-master&#10;encola el job y lo publica&#10;al minion destino" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="590" y="120" width="200" height="90" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="sonda" value="sonda-1 (salt-minion)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontStyle=1;arcSize=6;" vertex="1" parent="1">
+      <mxGeometry x="850" y="90" width="270" height="360" as="geometry"/>
+    </mxCell>
+    <mxCell id="mod" value="módulo de ejecución&#10;_modules/tranalyzer.py&#10;start / stop / restart / status&#10;set_interface / apply_config" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="870" y="130" width="230" height="80" as="geometry"/>
+    </mxCell>
+    <mxCell id="ctl" value="tranalyzerctl&#10;(abstrae el backend)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="870" y="225" width="230" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="be" value="backend&#10;systemd (nativo)  /  supervisor (Docker)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="870" y="295" width="230" height="55" as="geometry"/>
+    </mxCell>
+    <mxCell id="proc" value="proceso  tranalyzer -i eth0&#10;(captura continua)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="870" y="365" width="230" height="55" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="cfg" value="Gestión de configuración&#10;pillar (sondas.sls) → state tranalyzer.sls&#10;renderiza /etc/tranalyzer/sonda.env&#10;(IFACE, MONGO_HOST/PORT/DBNAME/TABLE_NAME)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="330" y="290" width="460" height="90" as="geometry"/>
+    </mxCell>
+
+    <mxCell id="e1" value="HTTP + token" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="op" target="api">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="api" target="master">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e3" value="publica job (ZeroMQ 4505/6)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="master" target="mod">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e4" value="shell out" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="mod" target="ctl">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="ctl" target="be">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e6" value="arranca/para" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;fontSize=10;" edge="1" parent="1" source="be" target="proc">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e7" value="apply_config / state.apply" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;fontSize=10;" edge="1" parent="1" source="master" target="cfg">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="e8" value="sonda.env" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;fontSize=10;" edge="1" parent="1" source="cfg" target="proc">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

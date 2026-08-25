@@ -1,0 +1,44 @@
+services:
+  salt-master:
+    build: .
+    image: tfg-coordinador
+    container_name: tfg_coordinador
+    restart: unless-stopped
+    # Host networking: el master debe ser accesible en la IP WireGuard (10.0.0.1)
+    # en los puertos 4505/4506, y la api en el 8001.
+    network_mode: host
+    volumes:
+      - ./salt/master:/etc/salt/master:ro
+      - ./salt/dashboard-users:/etc/salt/dashboard-users:ro
+      - ./salt/autosign.conf:/etc/salt/autosign.conf:ro
+      # states en /srv/salt; el árbol completo ./salt en /srv/salt-extra, que
+      # aporta _modules/ como segundo file_root. Se evita así montar _modules
+      # dentro de /srv/salt (montaje anidado sobre un bind :ro -> fallo al crear
+      # el punto de montaje en un sistema de solo lectura).
+      - ./salt/states:/srv/salt:ro
+      - ./salt/pillar:/srv/pillar:ro
+      - ./salt:/srv/salt-extra:ro
+      - master_pki:/etc/salt/pki/master
+
+  dashboard:
+    build: ./dashboard
+    image: tfg-dashboard
+    container_name: tfg_dashboard
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # salt-api (local en el coordinador)
+      SALT_API_URL: "http://127.0.0.1:8001"
+      SALT_API_USER: "saltdash"
+      SALT_API_PASS: "<password>"
+      SALT_API_EAUTH: "file"
+      # MongoDB central
+      MONGO_URI: "mongodb://10.0.0.1:27017"
+      MONGO_DBNAME: "tranalyzer"
+      # Puerto del panel
+      DASH_PORT: "8000"
+    depends_on:
+      - salt-master
+
+volumes:
+  master_pki:

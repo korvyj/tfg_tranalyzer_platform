@@ -1,0 +1,18 @@
+# Ejemplo de configuración WireGuard para una SONDA (cliente).
+#
+# Cada sonda recibe una IP en la subred 10.0.0.0/24 (10.0.0.2, 10.0.0.3, ...).
+# A través del túnel: envía flujos a MongoDB (27017) y habla con el salt-master
+# (4505/4506) del coordinador.
+[Interface]
+PrivateKey = <sonda_private_key>
+Address = 10.0.0.2/24
+
+[Peer]
+# Coordinador / servidor central
+PublicKey = <server_public_key>
+Endpoint = <server_ip>:51820
+# Solo encaminar el tráfico destinado a la subred VPN (10.0.0.0/24) por el túnel.
+# El resto del tráfico de la sonda sale por su interfaz local habitual.
+# Usar 0.0.0.0/0 forzaría TODO el tráfico de Internet a través del servidor.
+AllowedIPs = 10.0.0.0/24
+PersistentKeepalive = 25

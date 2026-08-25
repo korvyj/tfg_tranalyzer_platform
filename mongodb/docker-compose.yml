@@ -1,0 +1,16 @@
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: tfg_mongo
+    restart: unless-stopped
+    ports:
+      # Escucha en 0.0.0.0 para recibir flujos de las sondas remotas a través
+      # del túnel WireGuard (10.0.0.0/24). No exponer este puerto a Internet.
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./init:/docker-entrypoint-initdb.d
+    command: ["mongod", "--bind_ip", "0.0.0.0"]
+
+volumes:
+  mongo_data:

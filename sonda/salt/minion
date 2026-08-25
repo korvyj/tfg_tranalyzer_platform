@@ -1,0 +1,17 @@
+# Configuración del salt-minion de una sonda.
+# Copiar a /etc/salt/minion (despliegue nativo) o montarlo en el contenedor.
+
+# Dirección del salt-master (coordinador por WireGuard)
+master: 10.0.0.1
+
+# Identificador de la sonda (único por sonda). Cambiar en cada una:
+#   sonda-1, sonda-2, ...
+id: sonda-1
+
+# Reintentar la conexión al master si aún no está disponible
+master_alive_interval: 30
+retry_dns: 30
+
+# Grains propios: el panel y los estados pueden usarlos
+grains:
+  role: sonda

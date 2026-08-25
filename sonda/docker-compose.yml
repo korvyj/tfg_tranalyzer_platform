@@ -1,0 +1,33 @@
+services:
+  sonda:
+    build: .
+    image: tfg-sonda
+    container_name: tfg_sonda
+    restart: unless-stopped
+
+    # La captura en vivo dentro de un contenedor necesita ver las interfaces
+    # reales del host y permisos de captura:
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    environment:
+      # Interfaz a capturar en el host
+      IFACE: "wlp2s0"
+      # MongoDB central (coordinador por WireGuard). En pruebas locales: 127.0.0.1
+      MONGO_HOST: "10.0.0.1"
+      MONGO_PORT: "27017"
+      MONGO_DBNAME: "tranalyzer"
+
+    volumes:
+      # Configuración e identidad del minion (cambiar 'id' por sonda)
+      - ./salt/minion:/etc/salt/minion:ro
+      # Persistencia de las claves del minion entre reinicios
+      - sonda_salt_pki:/etc/salt/pki/minion
+      # Ficheros de salida locales de tranalyzer (además de MongoDB)
+      - sonda_t2out:/var/lib/tranalyzer
+
+volumes:
+  sonda_salt_pki:
+  sonda_t2out:

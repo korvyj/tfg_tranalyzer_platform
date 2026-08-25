@@ -1,0 +1,19 @@
+# Ejemplo de configuración WireGuard para el COORDINADOR / servidor central.
+#
+# El coordinador (10.0.0.1) aloja: salt-master, salt-api, el panel FastAPI y,
+# normalmente, MongoDB. Todas las sondas se conectan a él por el túnel.
+[Interface]
+PrivateKey = <server_private_key>
+Address = 10.0.0.1/24
+ListenPort = 51820
+
+# Añadir un bloque [Peer] por cada sonda.
+# [Peer]
+# # sonda-1
+# PublicKey = <sonda1_public_key>
+# AllowedIPs = 10.0.0.2/32
+#
+# [Peer]
+# # sonda-2
+# PublicKey = <sonda2_public_key>
+# AllowedIPs = 10.0.0.3/32
