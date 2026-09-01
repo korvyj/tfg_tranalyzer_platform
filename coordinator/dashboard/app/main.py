@@ -99,8 +99,8 @@ async def build_status() -> dict:
     ids = set(salt_status.keys())
     coll_by_id = {}
     for coll in mongo_status:
-        # flow_sonda_1 -> sonda-1
-        sid = coll[len("flow_"):].replace("_", "-") if coll.startswith("flow_") else coll
+        # flow_sonda_1 -> sonda-1 (per_sonda solo devuelve colecciones 'flow_<id>')
+        sid = coll[len("flow_"):].replace("_", "-")
         coll_by_id[sid] = coll
         ids.add(sid)
 

@@ -1,7 +1,7 @@
 """Consultas a MongoDB para el panel: métricas de flujos por sonda.
 
 Convención: cada sonda escribe en su propia colección 'flow_<id>'. El panel
-recorre todas las colecciones que empiezan por 'flow' y agrega por sonda.
+recorre esas colecciones y agrega por sonda.
 """
 from __future__ import annotations
 
@@ -112,7 +112,8 @@ class MongoStats:
     def per_sonda(self) -> dict[str, dict]:
         """Devuelve {coleccion: {flows, flows_5m, last_ts}} por cada 'flow*'."""
         try:
-            names = [c for c in self._db.list_collection_names() if c.startswith("flow")]
+            # Solo 'flow_<id>' identifica una sonda; una colección 'flow' suelta no.
+            names = [c for c in self._db.list_collection_names() if c.startswith("flow_")]
         except Exception as exc:
             return {"_error": str(exc)}
 
