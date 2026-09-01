@@ -9,13 +9,14 @@ const trendHist = new Map();
 let sortKey = "ts", sortDir = -1;
 let pageSize = 50, page = 0;
 // Definición única de los filtros de la tabla de flujos: clave del campo,
-// id del <select>, etiqueta del chip y texto de la opción "todos".
+// id del <select>, etiqueta del chip y texto de la opción "todos". El orden
+// es el mismo que el de las columnas de la tabla.
 const FILTERS = [
-  { key: "country", id: "f-country", label: "País",         empty: "País: todos" },
-  { key: "org",     id: "f-org",     label: "Organización", empty: "Organización: todas" },
   { key: "l4",      id: "f-l4",      label: "L4",           empty: "L4: todos" },
   { key: "proto",   id: "f-proto",   label: "Protocolo",    empty: "Protocolo: todos" },
   { key: "service", id: "f-service", label: "Aplicación",   empty: "Aplicación: todas" },
+  { key: "org",     id: "f-org",     label: "Organización", empty: "Organización: todas" },
+  { key: "country", id: "f-country", label: "País",         empty: "País: todos" },
 ];
 const filters = Object.fromEntries(FILTERS.map((f) => [f.key, ""]));
 let ipRecent = [];
@@ -25,7 +26,12 @@ let probeOnline = true;
 // Ruta de la API de esta sonda.
 const api = (path) => `/api/sonda/${encodeURIComponent(SID)}${path}`;
 
-const PALETTE = ["#58a6ff", "#3fb950", "#d29922", "#f85149", "#bc8cff", "#39c5cf", "#ff7b72"];
+// Paleta categórica del sistema visual: arranca en la tinta de dato (--trazo)
+// y sigue con los semánticos, de modo que la gráfica, las barras y la banda de
+// registro se lean como el mismo instrumento. Definida aquí y en style.css.
+const TINTA_DATO = "#1D3E8F";
+const PALETTE = [TINTA_DATO, "#0C6E52", "#8A6212", "#9E2B20",
+                 "#4C5B8C", "#1F6F7A", "#6B4E7A"];
 
 let tsData = null;
 const tsHidden = new Set();
@@ -294,8 +300,8 @@ function renderRecent() {
       const unknown = /^unknown$/i.test(String(f.proto ?? ""));
       return `<tr class="frow ${unknown ? "warn-row" : ""}" data-idx="${idx}" title="Ver detalle del flujo">
       <td>${fmtTime(f.ts)}</td>
-      <td class="mono ipcell" data-ip="${esc(f.src)}">${esc(f.src)}</td>
-      <td class="mono ipcell" data-ip="${esc(f.dst)}">${esc(f.dst)}</td>
+      <td class="mono ipcell" data-ip="${esc(f.src)}" title="Analizar ${esc(f.src)}">${esc(f.src)}</td>
+      <td class="mono ipcell" data-ip="${esc(f.dst)}" title="Analizar ${esc(f.dst)}">${esc(f.dst)}</td>
       <td>${esc(f.dport)}</td>
       <td>${esc(f.l4)}</td>
       <td>${unknown ? icon("alert") + " " : ""}${esc(f.proto)}</td>
@@ -372,11 +378,56 @@ function fillInfo(d) {
   }
 }
 
+
+/* ===== Banda de registro =================================================
+   Trazo continuo de flujos por intervalo sobre los últimos 15 minutos, al modo
+   del papel de un registrador gráfico. Es independiente de la gráfica de la
+   pestaña Resumen: aquí no hay controles, solo la señal. */
+const STRIP_WINDOW_S = 900;
+const STRIP_BUCKETS = 60;
+let stripDrawn = false;
+
+function renderStrip(series) {
+  const svg = $("#strip-svg");
+  if (!svg) return;
+  const W = 1000, H = 100;            // viewBox; el SVG se estira al ancho real
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const pts = (series || []).map((b) => b.total || 0);
+  const max = Math.max(1, ...pts);
+
+  if (!pts.length || max === 1 && pts.every((v) => v === 0)) {
+    svg.innerHTML = `<text class="strip-empty" x="12" y="${H / 2 + 4}">` +
+      `Sin flujos en los últimos 15 minutos</text>`;
+    return;
+  }
+
+  const x = (i) => (pts.length === 1 ? W : (i / (pts.length - 1)) * W);
+  const y = (v) => H - 4 - (v / max) * (H - 12);
+  const linea = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+  const area = `${linea} L${W} ${H} L0 ${H} Z`;
+
+  svg.innerHTML = `<path class="strip-area" d="${area}"/>` +
+    `<path class="strip-line" pathLength="1" d="${linea}"/>`;
+  // El trazado se anima una sola vez, al abrir la página.
+  if (!stripDrawn) { svg.classList.add("draw"); stripDrawn = true; }
+}
+
+async function refreshStrip() {
+  try {
+    const res = await fetch(api(
+      `/timeseries?by=total&window=${STRIP_WINDOW_S}&buckets=${STRIP_BUCKETS}`));
+    const d = await res.json();
+    renderStrip(d.series);
+  } catch (e) {
+    renderStrip([]);
+  }
+}
+
 function fillHeroAndCards(d) {
 
   const dot = $("#hero-dot");
   dot.className = "status-dot " + (d.online ? "ok" : "bad");
-  $("#hero-status").textContent = d.online ? "SONDA ONLINE" : "SONDA OFFLINE";
+  $("#hero-status").textContent = d.online ? "Online" : "Sin conexión";
   $("#hero-iface").textContent = (d.info && d.info.iface) || "—";
   const cap = $("#hero-cap");
   setBadge(cap, d.capturing, "Capturando", "Parada");
@@ -458,7 +509,7 @@ async function refreshChart() {
 function renderTalkers(d) {
   const fill = (id, items) => {
     const tbody = fillBarTable(`#${id} tbody`, items, (i, max) =>
-      `<tr class="clickable" data-ip="${esc(i.value)}" title="Investigar ${esc(i.value)}">
+      `<tr class="clickable" data-ip="${esc(i.value)}" title="Analizar ${esc(i.value)}">
         <td class="lbl mono">${esc(i.value)}</td>
         ${barCells(i.count, max)}
       </tr>`, "muted small");
@@ -525,17 +576,17 @@ function renderChart() {
   let paths = "";
   keys.forEach((k) => {
     const ki = allKeys.indexOf(k);
-    const col = isTotal ? "#58a6ff" : PALETTE[ki % PALETTE.length];
+    const col = isTotal ? TINTA_DATO : PALETTE[ki % PALETTE.length];
     const line = "M" + vis.map((b, i) => `${x(i).toFixed(1)},${y(valOf(b, k)).toFixed(1)}`).join(" L");
     if (isTotal) paths += `<path d="${line} L${x(n - 1)},${y(0)} L${x(0)},${y(0)} Z" fill="url(#tgrad)"/>`;
-    paths += `<path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+    paths += `<path d="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round"/>`;
   });
 
   host.innerHTML =
     `<svg viewBox="0 0 ${W} ${H}" class="tsvg" role="img" aria-label="Evolución temporal">
       <defs><linearGradient id="tgrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#58a6ff" stop-opacity="0.45"/>
-        <stop offset="100%" stop-color="#58a6ff" stop-opacity="0"/>
+        <stop offset="0%" stop-color="${TINTA_DATO}" stop-opacity="0.22"/>
+        <stop offset="100%" stop-color="${TINTA_DATO}" stop-opacity="0"/>
       </linearGradient></defs>${grid}${paths}${xlab}
       <line id="ts-cursor" class="ts-cursor" x1="0" y1="${pad.t}" x2="0" y2="${pad.t + ih}" style="visibility:hidden"/>
       <rect id="ts-brush" class="ts-brush" x="0" y="${pad.t}" width="0" height="${ih}" style="visibility:hidden"/>
@@ -549,7 +600,7 @@ function renderChart() {
 function renderChartLegend(d, allKeys) {
   const legend = $("#ts-legend");
   if (d.by === "total") {
-    legend.innerHTML = `<span class="lg"><span class="sw" style="background:#58a6ff"></span>Flujos totales</span>`;
+    legend.innerHTML = `<span class="lg"><span class="sw" style="background:${TINTA_DATO}"></span>Flujos totales</span>`;
     return;
   }
   if (!allKeys.length) { legend.innerHTML = '<span class="muted small">Sin series en esta ventana.</span>'; return; }
@@ -597,7 +648,7 @@ function onChartMove(ev) {
   const time = new Date(b.t * 1000).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   let rows;
   if (g.isTotal) {
-    rows = `<div><span class="sw" style="background:#58a6ff"></span>Flujos: <b>${nfmt(b.total)}</b></div>`;
+    rows = `<div><span class="sw" style="background:${TINTA_DATO}"></span>Flujos: <b>${nfmt(b.total)}</b></div>`;
   } else {
     rows = g.keys.map((k) => {
       const ki = g.allKeys.indexOf(k);
@@ -656,14 +707,15 @@ function renderRecentSearches() {
     b.addEventListener("click", () => lookupIp(b.dataset.ip)));
 }
 
-function ipList(title, items, ipClickable) {
+function ipList(title, items, ipClickable, meta) {
   if (!items || !items.length) return "";
-  return `<div class="ipl"><h4>${title}</h4><ul>` +
+  const cuenta = meta ? `<span class="ipl-count">${esc(meta)}</span>` : "";
+  return `<div class="ipl"><h4>${title}${cuenta}</h4><ul>` +
     items.map((i) => {
       const label = ipClickable
         ? `<a class="peer-ip mono" data-ip="${esc(i.value)}">${esc(i.value)}</a>`
         : esc(i.value);
-      return `<li>${label} <span class="muted">${nfmt(i.count)}</span></li>`;
+      return `<li>${label}<span class="ipl-n">${nfmt(i.count)}</span></li>`;
     }).join("") +
     `</ul></div>`;
 }
@@ -682,15 +734,22 @@ async function lookupIp(ip) {
     const d = await res.json();
     if (d.error) { box.innerHTML = `<span class="error">${esc(d.error)}</span>`; return; }
     if (!d.flows) { box.innerHTML = `<p class="muted">Sin flujos para <span class="mono">${esc(ip)}</span>.</p>`; return; }
+    const pares = d.peers_total || 0;
+    // «8 de 47» solo aporta cuando hay más pares de los que caben en la lista.
+    const metaPares = pares > d.peers.length ? `${nfmt(d.peers.length)} de ${nfmt(pares)}` : "";
     box.innerHTML = `
-      <p><b class="mono">${esc(ip)}</b> — ${nfmt(d.flows)} flujos
-         (${nfmt(d.as_src)} como origen, ${nfmt(d.as_dst)} como destino)</p>
+      <p class="ip-title mono">${esc(ip)}</p>
+      <div class="readouts">
+        <span class="readout"><b>${nfmt(d.flows)}</b><span class="unit">flujos</span></span>
+        <span class="readout"><b>${nfmt(d.as_src)}</b><span class="unit">como origen</span></span>
+        <span class="readout"><b>${nfmt(d.as_dst)}</b><span class="unit">como destino</span></span>
+        <span class="readout"><b>${nfmt(pares)}</b><span class="unit">pares distintos</span></span>
+      </div>
       <div class="ipl-grid">
         ${ipList(icon("tag") + " Protocolos", d.protocols)}
         ${ipList(icon("globe") + " Países", d.countries)}
         ${ipList(icon("building") + " Organizaciones", d.orgs)}
-        ${ipList(icon("plug") + " Servicio por puerto", d.ports)}
-        ${ipList(icon("link") + " Pares (peers)", d.peers, true)}
+        ${ipList(icon("link") + " Pares", d.peers, true, metaPares)}
       </div>`;
 
     box.querySelectorAll(".peer-ip").forEach((a) =>
@@ -733,7 +792,6 @@ function openFlowDetails(f) {
       ${drawerRow("Puerto origen", f.sport)}
       ${drawerRow("IP destino", f.dst)}
       ${drawerRow("Puerto destino", f.dport)}
-      ${drawerRow("Clase de puerto", f.port_class)}
       ${drawerRow("Protocolo L4", f.l4)}
       ${drawerRow("Protocolo L7", l7)}
       ${drawerRow("Organización", f.org)}
@@ -748,8 +806,8 @@ function openFlowDetails(f) {
       <div id="flow-meta-body"><span class="muted small">Despliega para cargar todos los campos…</span></div>
     </details>
     <div class="drawer-actions">
-      <button class="btn btn-iface small" id="drawer-ip-src">${icon("search")} Investigar origen</button>
-      <button class="btn btn-iface small" id="drawer-ip-dst">${icon("search")} Investigar destino</button>
+      <button class="btn btn-iface small" id="drawer-ip-src">${icon("search")} Analizar origen</button>
+      <button class="btn btn-iface small" id="drawer-ip-dst">${icon("search")} Analizar destino</button>
     </div>`;
   const drill = (ip) => { closeDrawer(); lookupIp(ip); $(".ip-panel").scrollIntoView({ behavior: "smooth", block: "center" }); };
   const bs = $("#drawer-ip-src"); if (bs && f.src) bs.addEventListener("click", () => drill(f.src));
@@ -808,7 +866,6 @@ async function refresh() {
     fillBars("t-ndpi", d.ndpi, "proto");
     fillBars("t-orgs", d.orgs, "org");
     fillBars("t-countries", d.countries, "country");
-    fillBars("t-ports", d.ports);
     updateControlState(d);
 
     lastRecent = d.recent || [];
@@ -822,17 +879,22 @@ async function refresh() {
     if (!d.online || e.info) {
       let msg = "La sonda no responde";
       if (d.last_seen_s != null) {
-        msg += `. Último contacto hace ${fmtLastSeen(d.last_seen_s)}`;
+        msg += `. Último flujo hace ${fmtLastSeen(d.last_seen_s)}`;
         if (d.last_ts) msg += ` (${new Date(d.last_ts * 1000).toLocaleString("es")})`;
         msg += ".";
       } else {
         msg += " y no ha enviado datos todavía.";
       }
-      banners.push(msg);
+      banners.push({ msg });
     }
-    if (e.mongo) banners.push(`Base de datos no disponible: ${e.mongo}`);
+    // El detalle técnico del fallo va en el 'title', no en el texto visible.
+    if (e.mongo) banners.push({
+      msg: "No se ha podido establecer la conexión con la base de datos.",
+      detail: e.mongo,
+    });
     $("#errors").innerHTML = banners
-      .map((m) => `<span class="error">${icon("alert")} ${esc(m)}</span>`)
+      .map((b) => `<span class="error"${b.detail ? ` title="${esc(b.detail)}"` : ""}>` +
+                  `${icon("alert")} ${esc(b.msg)}</span>`)
       .join(" ");
 
     lastGen = d.generated_at || (Date.now() / 1000);
@@ -878,7 +940,7 @@ const OK_MSG = {
   start: "Tranalyzer iniciado correctamente.",
   stop: "Tranalyzer detenido.",
   restart: "Tranalyzer detenido.\nTranalyzer iniciado correctamente.",
-  apply_config: "Configuración restablecida desde el pillar (captura reiniciada).",
+  apply_config: "Configuración restablecida a los valores iniciales (captura reiniciada).",
   set_interface: (arg) => `Interfaz de captura cambiada a «${arg}».`,
 };
 
@@ -934,7 +996,7 @@ async function saveConfig(ev) {
 
 async function clearData(btn) {
   if (opBusy) return;
-  if (!confirm(`¿Vaciar TODOS los flujos de ${SID} en MongoDB? Esta acción no se puede deshacer.`))
+  if (!confirm(`¿Vaciar todos los flujos de ${SID}? Se borrarán de la base de datos y no se podrán recuperar.`))
     return;
   return runOp(btn, "/clear", null, {
     okMsg: (data) => `Borrados ${nfmt(data.deleted)} flujos.`,
@@ -1021,8 +1083,10 @@ window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 loadRecentSearches();
 renderRecentSearches();
 refresh();
+refreshStrip();
 showTab(location.hash.slice(1) || "resumen");
 setInterval(refresh, REFRESH_MS);
 
 setInterval(() => { if (!$("#tab-resumen").hidden) refreshChart(); }, 10000);
+setInterval(refreshStrip, 15000);   // la banda se ve en las tres pestañas
 setInterval(tick, 1000);

@@ -48,7 +48,8 @@ def _split_ndpi(value):
 
 
 def _clean_org(value):
-    """Normaliza 'dstIPOrg' de geoip; descarta entradas técnicas/desconocidas."""
+    """Normaliza un nombre de organización de geoip ('srcIPOrg'/'dstIPOrg');
+    descarta entradas técnicas/desconocidas."""
     if not value:
         return None
     v = str(value).strip()
@@ -109,6 +110,32 @@ class MongoStats:
                               for d in col.aggregate(pipeline)
                               if d["_id"] not in (None, "")], [])
 
+    @staticmethod
+    def _org_stages(match: dict | None = None) -> list:
+        """Etapas que expanden cada flujo a las organizaciones que participan en
+        él: la del origen y la del destino. Se consideran los dos extremos
+        porque un flujo de un solo sentido (p. ej. un escaneo entrante sin
+        respuesta) solo lleva organización en 'srcIPOrg'."""
+        return [
+            {"$match": match or {}},
+            {"$project": {"org": {"$setUnion": [
+                [{"$ifNull": ["$srcIPOrg", ""]}],
+                [{"$ifNull": ["$dstIPOrg", ""]}],
+            ]}}},
+            {"$unwind": "$org"},
+            {"$match": {"org": {"$nin": ["", "-", "--", None]}}},
+        ]
+
+    def _top_orgs(self, col, limit: int = 8, match: dict | None = None) -> list:
+        """Top-N organizaciones por número de flujos en los que participan."""
+        pipeline = self._org_stages(match) + [
+            {"$group": {"_id": "$org", "n": {"$sum": 1}}},
+            {"$sort": {"n": -1}},
+            {"$limit": limit},
+        ]
+        return _safe(lambda: [{"value": d["_id"], "count": d["n"]}
+                              for d in col.aggregate(pipeline)], [])
+
     def per_sonda(self) -> dict[str, dict]:
         """Devuelve {coleccion: {flows, flows_5m, last_ts}} por cada 'flow*'."""
         try:
@@ -154,7 +181,6 @@ class MongoStats:
             "ndpi": [],
             "countries": [],
             "orgs": [],
-            "ports": [],
             "recent": [],
         }
         col, error = self._open(collection)
@@ -196,10 +222,9 @@ class MongoStats:
                 {"$match": {"_id": {"$nin": ["", None]}}},
                 {"$count": "n"},
             ]),
-            "orgs": distinct_count([
-                {"$match": {"dstIPOrg": {"$nin": ["", "-", "--", None],
-                                          "$not": {"$regex": "^!"}}}},
-                {"$group": {"_id": "$dstIPOrg"}},
+            "orgs": distinct_count(self._org_stages() + [
+                {"$match": {"org": {"$not": {"$regex": "^!"}}}},
+                {"$group": {"_id": "$org"}},
                 {"$count": "n"},
             ]),
         }
@@ -222,7 +247,7 @@ class MongoStats:
                 projection={
                     "timeFirst": 1, "timeLast": 1, "srcIP": 1, "srcPort": 1,
                     "dstIP": 1, "dstPort": 1, "l4Proto": 1, "nDPIclass": 1,
-                    "dstPortClass": 1, "dstIpCountry": 1, "dstIPOrg": 1,
+                    "dstIpCountry": 1, "dstIPOrg": 1,
                     "pktsSnt": 1, "pktsRcvd": 1, "l7BytesSnt": 1, "l7BytesRcvd": 1,
                 },
                 sort=[("timeLast", -1)],
@@ -238,7 +263,6 @@ class MongoStats:
                     "sport": d.get("srcPort"),
                     "dst": d.get("dstIP"),
                     "dport": d.get("dstPort"),
-                    "port_class": d.get("dstPortClass"),
                     "l4": _PROTO_NAMES.get(d.get("l4Proto"), str(d.get("l4Proto"))),
                     "proto": proto,
                     "service": service,
@@ -252,9 +276,10 @@ class MongoStats:
         except Exception:
             pass
 
-        # Organizaciones de destino: se descartan las entradas técnicas de geoip
-        # ('!...' multicast/privadas, '-'/'--' desconocidas).
-        orgs = [o for o in self._top(col, "dstIPOrg", limit=20)
+        # Organizaciones que participan en el tráfico capturado (origen o
+        # destino). Se descartan las entradas técnicas de geoip ('!...'
+        # multicast/privadas, '-'/'--' desconocidas).
+        orgs = [o for o in self._top_orgs(col, limit=20)
                 if _clean_org(o["value"])][:8]
 
         return {
@@ -267,17 +292,17 @@ class MongoStats:
             "ndpi": top("nDPIclass"),
             "countries": top("dstIpCountry", exclude=["--", "", None]),
             "orgs": orgs,
-            "ports": top("dstPortClass", exclude=["unknown", "", None]),
             "recent": recent_flows,
         }
 
     def ip_detail(self, collection: str, ip: str, limit: int = 8) -> dict:
         """Perfil de una IP: con qué protocolos, países, organizaciones y pares
         (peers) ha hablado dentro de la colección de una sonda. Considera la IP
-        tanto en origen como en destino."""
+        tanto en origen como en destino. 'peers' va recortado al top-N por número
+        de flujos; 'peers_total' es cuántos pares distintos hay en total."""
         empty = {
             "ip": ip, "flows": 0, "as_src": 0, "as_dst": 0,
-            "protocols": [], "countries": [], "orgs": [], "ports": [], "peers": [],
+            "protocols": [], "countries": [], "orgs": [], "peers": [], "peers_total": 0,
         }
         col, error = self._open(collection)
         if error:
@@ -287,10 +312,9 @@ class MongoStats:
 
         base = {"$or": [{"srcIP": ip}, {"dstIP": ip}]}
 
-        def top(field: str, extra: dict | None = None, clean=None) -> list:
+        def top(field: str, extra: dict | None = None) -> list:
             match = {**base, **extra} if extra else base
-            out = self._top(col, field, limit=limit, match=match)
-            return [o for o in out if clean(o["value"])] if clean else out
+            return self._top(col, field, limit=limit, match=match)
 
         try:
             flows = col.count_documents(base)
@@ -312,6 +336,29 @@ class MongoStats:
             ]) if d["_id"]
         ], [])
 
+        peers_total = _safe(lambda: next(iter(col.aggregate([
+            {"$match": base},
+            {"$project": {"peer": {"$cond": [
+                {"$eq": ["$srcIP", ip]}, "$dstIP", "$srcIP"]}}},
+            {"$match": {"peer": {"$nin": ["", None]}}},
+            {"$group": {"_id": "$peer"}},
+            {"$count": "n"},
+        ])), {}).get("n", 0), 0)
+
+        # Organización del extremo contrario en cada flujo: con qué
+        # organizaciones ha hablado esta IP, sin contar la suya propia.
+        peer_orgs = [o for o in _safe(lambda: [
+            {"value": d["_id"], "count": d["n"]}
+            for d in col.aggregate([
+                {"$match": base},
+                {"$project": {"org": {"$cond": [
+                    {"$eq": ["$srcIP", ip]}, "$dstIPOrg", "$srcIPOrg"]}}},
+                {"$group": {"_id": "$org", "n": {"$sum": 1}}},
+                {"$sort": {"n": -1}},
+                {"$limit": limit * 3},
+            ])
+        ], []) if _clean_org(o["value"])][:limit]
+
         return {
             "ip": ip,
             "flows": flows,
@@ -319,15 +366,15 @@ class MongoStats:
             "as_dst": as_dst,
             "protocols": top("nDPIclass"),
             "countries": top("dstIpCountry", extra={"dstIpCountry": {"$nin": ["--", "", None]}}),
-            "orgs": top("dstIPOrg", clean=_clean_org),
-            "ports": top("dstPortClass", extra={"dstPortClass": {"$nin": ["unknown", "", None]}}),
+            "orgs": peer_orgs,
             "peers": peers,
+            "peers_total": peers_total,
         }
 
     # Campos exportados (y su orden) para CSV/JSON.
     EXPORT_FIELDS = [
         "timeLast", "srcIP", "srcPort", "dstIP", "dstPort", "l4Proto",
-        "nDPIclass", "dstPortClass", "dstIpCountry", "dstIPOrg",
+        "nDPIclass", "dstIpCountry", "dstIPOrg",
         "l7BytesSnt", "l7BytesRcvd",
     ]
 

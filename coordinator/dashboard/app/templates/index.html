@@ -4,45 +4,57 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Panel de sondas · TFG Tranalyzer</title>
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <link rel="stylesheet" href="/static/fonts.css?v=1">
+  <link rel="stylesheet" href="/static/style.css?v=29">
 </head>
 <body>
   <header>
-    <h1>Estado de las sondas</h1>
-    <span id="updated" class="muted"></span>
+    <div class="ident">
+      <span class="back">Plataforma de captura</span>
+      <h1>Sondas</h1>
+    </div>
+    <div class="head-meta">
+      <span class="updated-line"><span id="updated"></span></span>
+    </div>
   </header>
 
+  {# El detalle técnico del fallo queda en el 'title', fuera del texto visible. #}
   {% if data.errors.salt %}
-    <p class="error">salt-api: {{ data.errors.salt }}</p>
+    <p class="error" title="{{ data.errors.salt }}">No se ha podido establecer la conexión con las sondas.</p>
   {% endif %}
   {% if data.errors.mongo %}
-    <p class="error">MongoDB: {{ data.errors.mongo }}</p>
+    <p class="error" title="{{ data.errors.mongo }}">No se ha podido establecer la conexión con la base de datos.</p>
   {% endif %}
 
   <table id="sondas">
     <thead>
       <tr>
         <th>Sonda</th><th>Conexión</th><th>Captura</th>
-        <th>Colección</th><th>Flujos</th><th>Últimos 5&nbsp;min</th><th>Último flujo</th>
+        <th>Actividad (15 min)</th>
+        <th class="num">Flujos</th><th class="num">Últimos 5&nbsp;min</th>
+        <th class="num">Último flujo</th><th>Colección</th>
       </tr>
     </thead>
     <tbody>
-      <!-- Relleno por JS; el render inicial sirve de fallback sin JS -->
+      <!-- Relleno por JS; este render inicial es el respaldo sin JS -->
       {% for s in data.sondas %}
       <tr>
         <td><a href="/sonda/{{ s.id }}">{{ s.id }}</a></td>
-        <td>{{ 'online' if s.online else 'offline' }}</td>
-        <td>{{ 'capturando' if s.capturing else 'parada' }}</td>
-        <td>{{ s.collection }}</td>
-        <td>{{ s.flows }}</td>
-        <td>{{ s.flows_5m }}</td>
-        <td>{{ (s.last_seen_s ~ ' s') if s.last_seen_s is not none else '—' }}</td>
+        <td>{{ 'Online' if s.online else 'Sin conexión' }}</td>
+        <td>{{ 'Capturando' if s.capturing else 'Parada' }}</td>
+        <td class="sparkcell"><span class="muted small">—</span></td>
+        <td class="num">{{ s.flows }}</td>
+        <td class="num">{{ s.flows_5m }}</td>
+        <td class="num">{{ (s.last_seen_s ~ ' s') if s.last_seen_s is not none else '—' }}</td>
+        <td class="mono small">{{ s.collection }}</td>
       </tr>
+      {% else %}
+      <tr><td colspan="8" class="muted">Todavía no hay ninguna sonda dada de alta.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   <script src="/static/common.js?v=1"></script>
-  <script src="/static/app.js?v=3"></script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

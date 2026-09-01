@@ -1,377 +1,548 @@
-:root { --bg:#0f1419; --fg:#e6e6e6; --muted:#a2adba; --ok:#3fb950; --bad:#f85149; --line:#242c37; }
+/* =============================================================================
+   Panel de sondas — sistema visual «instrumento de registro»
+   -----------------------------------------------------------------------------
+   La sonda mide tráfico igual que un registrador gráfico mide una señal, y el
+   panel se presenta como el frontal de ese aparato: placas de hairline, rótulos
+   grabados en monoespaciada versalita, cifras tabulares y una sola tinta para
+   el dato vivo.
 
-/* Iconos SVG (biblioteca inline) — render uniforme en todo SO/navegador */
-.ic { width:1.05em; height:1.05em; display:inline-block; vertical-align:-0.15em;
-  fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-h2 .ic, h3 .ic { margin-right:.3rem; }
-.tab .ic { margin-right:.25rem; }
-.btn .ic { margin-right:.2rem; }
-.sic .ic { width:1.5rem; height:1.5rem; vertical-align:middle; color:#58a6ff; }
-.uptime-badge .ic { margin-right:.15rem; }
-* { box-sizing: border-box; }
-body { margin:0; padding:2rem; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); }
-header { display:flex; align-items:baseline; gap:1rem; margin-bottom:1.5rem; }
-h1 { font-size:1.4rem; margin:0; }
-.muted { color:var(--muted); font-size:.85rem; }
-.error { color:var(--bad); background:rgba(248,81,73,.1); padding:.5rem .75rem; border-radius:6px; }
-table { border-collapse:collapse; width:100%; max-width:1000px; }
-th, td { text-align:left; padding:.55rem .75rem; border-bottom:1px solid var(--line); }
-th { color:var(--muted); font-weight:600; font-size:.8rem; text-transform:uppercase; letter-spacing:.03em; }
-td { font-variant-numeric: tabular-nums; }
-.dot { display:inline-block; width:.6rem; height:.6rem; border-radius:50%; margin-right:.4rem; vertical-align:middle; }
-.dot.ok { background:var(--ok); } .dot.bad { background:var(--bad); }
-.pill { font-size:.8rem; padding:.1rem .5rem; border-radius:999px; border:1px solid var(--line); }
-.pill.on { color:var(--ok); border-color:var(--ok); }
-.pill.off { color:var(--muted); }
+   Orden del fichero: 1 tokens · 2 base · 3 primitivas · 4 componentes ·
+   5 vistas · 6 estados. Todo componente se define UNA vez aquí y se reutiliza;
+   las vistas solo lo componen. Los nombres de clase son los que ya genera el
+   JS, así que el rediseño no toca la lógica.
+   ========================================================================== */
 
-/* --- Página de detalle de la sonda --- */
-a { color:#58a6ff; text-decoration:none; }
+/* ============================ 1. TOKENS =================================== */
+:root {
+  /* Superficies: papel de instrumento, placa, hueco mecanizado */
+  --papel:#EDEFEA;
+  --placa:#FAFBF8;
+  --hueco:#E4E7E1;
+  --regla:#CBD0C8;
+  --regla-fuerte:#A6AEA3;
+
+  /* Tinta */
+  --tinta:#13181A;
+  --acero:#606B70;
+
+  /* Semánticos: cada color significa una cosa y solo una */
+  --trazo:#1D3E8F;   /* dato, elemento interactivo, barras */
+  --senal:#0C6E52;   /* captura activa */
+  --oxido:#9E2B20;   /* fallo, acción destructiva */
+  --ocre:#8A6212;    /* tráfico sin clasificar, aviso */
+
+  /* Tintes derivados (fondo de estado, resaltados) */
+  --trazo-10:rgba(29,62,143,.10);
+  --trazo-06:rgba(29,62,143,.06);
+  --senal-10:rgba(12,110,82,.10);
+  --oxido-10:rgba(158,43,32,.10);
+  --ocre-10:rgba(138,98,18,.12);
+
+  /* Tipografía */
+  --sans:'IBM Plex Sans', system-ui, sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+  --cond:'IBM Plex Sans Condensed', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* Ritmo: escala de espaciado de 4 px y un radio casi recto */
+  --e1:.25rem; --e2:.5rem; --e3:.75rem; --e4:1rem; --e6:1.5rem; --e8:2rem;
+  --radio:3px;
+
+  /* Compatibilidad con nombres heredados usados por el JS */
+  --bg:var(--papel); --fg:var(--tinta); --muted:var(--acero);
+  --line:var(--regla); --ok:var(--senal); --bad:var(--oxido);
+}
+
+/* ============================ 2. BASE ===================================== */
+* { box-sizing:border-box; }
+
+body {
+  margin:0;
+  padding:var(--e6) var(--e6) var(--e8);
+  background:var(--papel);
+  color:var(--tinta);
+  font:400 15px/1.5 var(--sans);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* El contenido se ancla a una medida legible; las vistas no fijan anchos.
+   Los elementos flotantes (cajón, avisos, biblioteca de iconos) quedan fuera:
+   están posicionados y los márgenes automáticos los descolocarían. */
+body > * { max-width:1220px; margin-left:auto; margin-right:auto; }
+body > .drawer, body > .drawer-overlay, body > svg { max-width:none; margin:0; }
+body > .toasts { max-width:min(360px,90vw); margin:0; }
+
+h1, h2, h3, h4 { margin:0; font-weight:600; }
+
+/* Rótulo grabado: la voz del instrumento. Titula placas, columnas y campos. */
+.label,
+.grid > section > h2,
+.panel > h2,
+.panel > h3,
+.table-head h2,
+.info-group h3,
+.collapse h3,
+.ipl h4,
+.talkers-h,
+.cfg-group legend,
+.card .k,
+.kpi-k,
+.scard .sk {
+  font:600 .7rem/1.1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--acero);
+}
+
+/* Los títulos de placa arrastran una regla hasta el borde: marca de escala. */
+.grid > section > h2,
+.panel > h2,
+.panel > h3,
+.table-head h2,
+.info-group h3 {
+  display:flex; align-items:center; gap:var(--e3);
+  margin:0 0 var(--e3);
+}
+.grid > section > h2::after,
+.panel > h2::after,
+.panel > h3::after,
+.info-group h3::after {
+  content:""; flex:1 1 auto; height:1px; background:var(--regla);
+}
+
+a { color:var(--trazo); text-decoration:none; }
 a:hover { text-decoration:underline; }
-.back { color:var(--muted); }
-.mono { font-family: ui-monospace, monospace; }
-h2 { font-size:1rem; margin:1.5rem 0 .6rem; color:var(--fg); }
-.ok { color:var(--ok); } .bad { color:var(--bad); }
 
-.cards { display:flex; flex-wrap:wrap; gap:.75rem; margin-bottom:.5rem; }
-.card { display:flex; flex-direction:column; gap:.2rem; padding:.6rem .9rem;
-  border:1px solid var(--line); border-radius:8px; min-width:120px; }
-.card .k { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.03em; }
-.card .v { font-size:1.15rem; font-variant-numeric:tabular-nums; }
+code, .mono { font-family:var(--mono); }
+code { background:var(--hueco); padding:.05rem .3rem; border-radius:2px; font-size:.9em; }
 
-.panel { margin-top:1rem; padding:1rem; border:1px solid var(--line); border-radius:8px; max-width:1000px; }
-.controls { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.6rem; align-items:center; }
-.btn { background:#1b2430; color:var(--fg); border:1px solid var(--line);
-  padding:.4rem .8rem; border-radius:6px; cursor:pointer; font-size:.85rem; }
-.btn:hover { border-color:#58a6ff; }
-.txt { background:var(--bg); color:var(--fg); border:1px solid var(--line);
-  padding:.4rem .5rem; border-radius:6px; font-family:ui-monospace, monospace; }
-.action-out { margin:.4rem 0 0; padding:.6rem .75rem; background:#0b0f14;
-  border:1px solid var(--line); border-radius:6px; white-space:pre-wrap;
-  font-size:.8rem; max-height:220px; overflow:auto; }
+.muted { color:var(--acero); }
+.small { font-size:.82rem; }
+.ok { color:var(--senal); }
+.bad { color:var(--oxido); }
 
-.btn.danger { border-color:var(--bad); color:var(--bad); }
-.btn.danger:hover { background:rgba(248,81,73,.12); border-color:var(--bad); }
-.small { font-size:.8rem; }
-select.txt, select#window { background:#1b2430; color:var(--fg); border:1px solid var(--line);
-  border-radius:6px; padding:.15rem .3rem; font-size:.85rem; }
-select#window { margin-left:.15rem; }
-code { font-family:ui-monospace, monospace; background:#0b0f14; padding:.05rem .3rem; border-radius:4px; }
-.cfg { display:flex; flex-wrap:wrap; gap:.75rem 1rem; align-items:flex-end; }
-.cfg label { display:flex; flex-direction:column; gap:.25rem; font-size:.78rem; color:var(--muted); }
-.cfg input { min-width:150px; }
+/* Iconos: mismo grosor de trazo que las reglas de la interfaz. */
+.ic { width:1.05em; height:1.05em; display:inline-block; vertical-align:-.15em;
+  fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+h2 .ic, h3 .ic { margin-right:var(--e1); }
+.tab .ic, .btn .ic { margin-right:var(--e1); }
+.uptime-badge .ic { margin-right:.15rem; }
 
-/* ===== Rediseño página de sonda (v4) ===== */
+/* Foco visible y homogéneo en todo control. */
+:focus-visible { outline:2px solid var(--trazo); outline-offset:2px; border-radius:1px; }
 
-/* Hero: estado + interfaz + flujos, lo más importante arriba */
-.head-meta { display:flex; flex-direction:column; align-items:flex-end; gap:.15rem; margin-left:auto; }
+/* ========================= 3. PRIMITIVAS ================================== */
 
-/* Navegación por pestañas */
-.tabs { display:flex; gap:.3rem; border-bottom:1px solid var(--line); margin:0 0 1.3rem; flex-wrap:wrap; }
-.tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted);
-  padding:.55rem 1.1rem; font-size:.95rem; cursor:pointer; border-radius:6px 6px 0 0; }
-.tab:hover { color:var(--fg); background:#141b24; }
-.tab.active { color:var(--fg); border-bottom-color:#58a6ff; font-weight:600; }
-.tabpanel { animation:fadein .18s ease; }
-@keyframes fadein { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
-.tabpanel > .panel:first-child, .tabpanel > .summary:first-child { margin-top:0; }
-.panel .controlbar { margin:0; }
+/* --- Placa: la ÚNICA superficie elevada del sistema ---------------------- */
+.plate, .panel, .grid > section, .info-group, .scard, .kpi, .ip-result,
+.card, .collapse, .table-scroll, .strip {
+  background:var(--placa);
+  border:1px solid var(--regla);
+  border-radius:var(--radio);
+}
 
-/* Gráfica + Top talkers lado a lado */
-.chart-row { display:flex; gap:1rem; align-items:stretch; flex-wrap:wrap; }
-.chart-row .chart-panel { flex:1 1 460px; min-width:0; margin-top:0; }
-.talkers-panel { flex:1 1 320px; margin-top:0; }
-/* Cabeceras de ambas tarjetas al mismo nivel */
-.chart-panel .table-head, .talkers-panel .table-head { margin-top:0; }
-.talkers-h { margin:.7rem 0 .3rem; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
-/* Mini-barras de "IPs más activas": IP azul clicable con espacio suficiente */
-.talkers td { padding:.3rem .5rem; }
-.talkers .lbl { color:#58a6ff; font-size:.82rem; white-space:nowrap; }
-.talkers .barcell { width:26%; }
-.talkers .num { font-size:.82rem; white-space:nowrap; }
-.talkers tr.clickable .lbl::after { content:none; }   /* sin la flecha de "filtrar" */
+/* --- Piloto de estado ---------------------------------------------------- */
+.dot, .status-dot, .hdr-dot {
+  display:inline-block; border-radius:50%; flex:none;
+  width:.55rem; height:.55rem; background:var(--regla-fuerte);
+}
+.dot { margin-right:var(--e1); vertical-align:middle; }
+.status-dot { width:.7rem; height:.7rem; }
+.dot.ok, .status-dot.ok, .hdr-dot.ok { background:var(--senal); }
+.dot.bad, .status-dot.bad, .hdr-dot.bad, .hdr-dot.off { background:var(--oxido); }
+.hdr-dot.warn { background:var(--ocre); }
 
-/* Punto de estado en la cabecera (siempre con estado, nunca vacío) */
-.updated-line { display:inline-flex; align-items:center; gap:.35rem; }
-.hdr-dot { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; background:var(--muted); flex:none; }
-.hdr-dot.ok { background:var(--ok); box-shadow:0 0 6px var(--ok); }
-.hdr-dot.warn { background:#d29922; }
-.hdr-dot.off { background:var(--bad); }
+/* --- Etiqueta de estado: rectangular, con filete lateral del color -------
+   Sustituye a las píldoras redondeadas: el filete codifica el estado sin
+   depender solo del color de texto.                                       */
+.badge, .cap-badge, .pill, .uptime-badge {
+  display:inline-block; padding:.15rem var(--e2);
+  border:1px solid var(--regla); border-left:3px solid var(--regla-fuerte);
+  border-radius:2px; background:var(--placa);
+  font:600 .68rem/1.5 var(--mono); text-transform:uppercase; letter-spacing:.08em;
+  color:var(--acero); white-space:nowrap;
+}
+.badge.on, .cap-badge.on, .pill.on, .uptime-badge.on {
+  border-left-color:var(--senal); color:var(--senal); background:var(--senal-10);
+}
+.badge.off, .cap-badge.off, .pill.off, .uptime-badge.off { color:var(--acero); }
 
-/* Feedback inmediato al filtrar la tabla */
-.table-scroll { position:relative; transition:opacity .12s ease; }
-.table-scroll.filtering { opacity:.4; }
+/* --- Ficha: valor recuperable (IP reciente, dirección, filtro activo) ----- */
+.chip, .fchip, .ipbadge {
+  display:inline-block; padding:.1rem var(--e2);
+  border:1px solid var(--regla); border-radius:2px; background:var(--placa);
+  font:400 .78rem/1.55 var(--mono); color:var(--trazo); cursor:pointer;
+}
+.chip:hover, .fchip:hover { border-color:var(--trazo); background:var(--trazo-06); }
+.ipbadge { color:var(--tinta); cursor:default; }
+.fchip { background:var(--trazo-10); border-color:var(--trazo); }
+.fchip:hover { background:var(--oxido-10); border-color:var(--oxido); color:var(--oxido); }
+.fchip b { color:var(--acero); font-weight:400; margin-left:.15rem; }
 
-/* Marcador informativo junto a "Unknown" en la clasificación nDPI */
-.info-mark { color:#e3b341; cursor:help; margin-left:.3rem; }
-.info-mark .ic { width:.95em; height:.95em; vertical-align:-0.15em; }
+/* --- Botón: una base, variantes por función ------------------------------
+   Relleno = la acción se ejecuta y tiene consecuencias. Hueco = secundaria. */
+.btn {
+  --btn-bg:var(--placa); --btn-bd:var(--regla-fuerte); --btn-fg:var(--tinta);
+  display:inline-flex; align-items:center; gap:.15rem;
+  padding:.34rem var(--e3);
+  background:var(--btn-bg); border:1px solid var(--btn-bd); color:var(--btn-fg);
+  border-radius:2px; cursor:pointer;
+  font:500 .8rem/1.4 var(--sans);
+  transition:background .12s ease, border-color .12s ease;
+}
+.btn:hover { border-color:var(--tinta); }
+.btn-start   { --btn-bg:var(--senal); --btn-bd:var(--senal); --btn-fg:#fff; }
+.btn-iface   { --btn-bg:var(--trazo); --btn-bd:var(--trazo); --btn-fg:#fff; }
+.btn.danger  { --btn-bg:var(--oxido); --btn-bd:var(--oxido); --btn-fg:#fff; }
+.btn-stop,
+.btn-purge   { --btn-bd:var(--oxido); --btn-fg:var(--oxido); }
+#btn-clear   { margin-left:auto; }
+.btn-restart { --btn-bd:var(--ocre);  --btn-fg:var(--ocre); }
+.btn-reset   { --btn-fg:var(--acero); }
+.btn-start:hover, .btn-iface:hover, .btn.danger:hover { filter:brightness(1.12); }
+.btn-stop:hover,
+.btn-purge:hover   { background:var(--oxido-10); border-color:var(--oxido); }
+.btn-restart:hover { background:var(--ocre-10);  border-color:var(--ocre); }
+.btn.small { padding:.2rem var(--e2); font-size:.75rem; }
+a.btn { text-decoration:none; }
 
-/* Mensaje de gráfica vacía (sonda sin datos / desconectada) */
-.ts-empty { fill:var(--muted); font-size:13px; }
-.ts-chart .grid.faint { opacity:.35; }
-.uptime-badge { font-size:.78rem; padding:.15rem .55rem; border-radius:999px;
-  border:1px solid var(--line); color:var(--muted); white-space:nowrap; }
-.uptime-badge.on { color:var(--ok); border-color:rgba(63,185,80,.4); background:rgba(63,185,80,.08); }
+.btn:disabled { opacity:.4; cursor:not-allowed; }
+.btn:disabled:hover { border-color:var(--btn-bd); background:var(--btn-bg); }
+.btn.loading { position:relative; color:transparent !important; pointer-events:none; }
+.btn.loading::after {
+  content:""; position:absolute; inset:50% auto auto 50%;
+  width:.85rem; height:.85rem; margin:-.42rem 0 0 -.42rem; border-radius:50%;
+  border:2px solid currentColor; border-top-color:transparent;
+  color:var(--btn-fg); animation:girar .6s linear infinite;
+}
+@keyframes girar { to { transform:rotate(360deg); } }
 
-.hero { display:flex; justify-content:space-between; align-items:center; gap:1rem;
-  flex-wrap:wrap; padding:.7rem 1.1rem; margin-bottom:.8rem;
-  border:1px solid var(--line); border-radius:12px;
-  background:linear-gradient(135deg, rgba(31,111,235,.10), rgba(63,185,80,.05)); }
-.hero-left { display:flex; align-items:center; gap:.9rem; }
-.status-dot { width:.85rem; height:.85rem; border-radius:50%; flex:none;
-  box-shadow:0 0 0 4px rgba(255,255,255,.04); }
-.status-dot.ok { background:var(--ok); box-shadow:0 0 12px var(--ok); }
-.status-dot.bad { background:var(--bad); box-shadow:0 0 12px var(--bad); }
-.hero-title { font-size:1.25rem; font-weight:700; letter-spacing:.02em; }
-.hero-sub { color:var(--muted); font-size:.95rem; }
-.hero-right { display:flex; align-items:center; gap:1.2rem; }
-.hero-flows { font-size:1.1rem; color:var(--muted); }
-.hero-flows span:first-child { font-size:1.7rem; font-weight:700; color:var(--fg);
-  font-variant-numeric:tabular-nums; }
-.hero-flows .unit { font-size:.9rem; }
-.cap-badge, .badge { font-size:.8rem; padding:.2rem .6rem; border-radius:999px;
-  border:1px solid var(--line); white-space:nowrap; }
-.cap-badge.on, .badge.on { color:var(--ok); border-color:var(--ok); background:rgba(63,185,80,.10); }
-.cap-badge.off, .badge.off { color:var(--muted); }
+/* --- Campo de entrada: hueco mecanizado en la placa ----------------------- */
+.txt, select.txt, select#window {
+  background:var(--hueco); color:var(--tinta);
+  border:1px solid var(--regla-fuerte); border-radius:2px;
+  padding:.28rem var(--e2);
+  font:400 .82rem/1.4 var(--mono);
+}
+.txt:hover { border-color:var(--acero); }
+select.txt, select#window { font-family:var(--sans); cursor:pointer; }
+select#window { margin-left:var(--e1); }
 
-/* Métricas clave (KPIs) — fila compacta */
-.kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
-  gap:.6rem; margin-bottom:.8rem; }
-.kpi { display:flex; align-items:baseline; justify-content:space-between; gap:.6rem;
-  padding:.45rem .8rem; border:1px solid var(--line); border-radius:9px; background:#141b24; }
-.kpi-k { color:var(--muted); font-size:.75rem; }
-.kpi-v { font-size:1.15rem; font-weight:600; font-variant-numeric:tabular-nums; }
+/* --- Tabla: un solo tratamiento para todas las del panel ------------------ */
+table { border-collapse:collapse; width:100%; }
+th, td { text-align:left; padding:.42rem var(--e2); border-bottom:1px solid var(--regla); }
+th {
+  font:600 .68rem/1.4 var(--mono); text-transform:uppercase; letter-spacing:.08em;
+  color:var(--acero); white-space:nowrap;
+}
+td { font-size:.85rem; font-variant-numeric:tabular-nums; }
+tbody tr:last-child td { border-bottom:none; }
 
-/* Tarjetas resumen — compactas, cifras grandes, con tendencia */
-.summary { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr));
-  gap:.6rem; margin-bottom:.8rem; }
-.scard { display:flex; align-items:center; gap:.65rem;
-  padding:.55rem .8rem; border:1px solid var(--line); border-radius:10px; background:#141b24; }
-.scard .sic { font-size:1.6rem; line-height:1; }
-.scard .sbody { display:flex; flex-direction:column; gap:.05rem; min-width:0; }
-.scard .srow { display:flex; align-items:baseline; gap:.4rem; }
-.scard .sv { font-size:1.7rem; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.05; }
-.scard.big .sv { font-size:2.1rem; }
-.scard .sk { color:var(--muted); font-size:.74rem; white-space:nowrap; }
-.strend { font-size:.72rem; font-weight:600; }
-.strend.up { color:var(--ok); }
-.strend.down { color:var(--bad); }
+/* Barras: relleno sólido sobre carril hundido; sin degradados. */
+table.bars td { padding:.3rem var(--e2); }
+table.bars .lbl { white-space:nowrap; }
+table.bars .num { text-align:right; color:var(--acero); font-family:var(--mono); font-size:.78rem; }
+table.bars .barcell { width:58%; }
+table.bars .bar {
+  display:block; height:.55rem; min-width:2px; border-radius:1px;
+  background:var(--trazo); box-shadow:0 0 0 1px var(--trazo-10);
+}
+table.bars .bar.warn { background:var(--ocre); }
 
-/* Animación al cambiar un valor numérico */
-@keyframes bump { 0%{ transform:scale(1); } 30%{ transform:scale(1.14); color:#79c0ff; } 100%{ transform:scale(1); } }
-.bump { animation:bump .45s ease-out; display:inline-block; }
+/* ========================= 4. COMPONENTES ================================= */
 
-/* Barra de control compacta */
-.controlbar { display:flex; flex-wrap:wrap; gap:.45rem; margin:0 0 1.4rem; }
+/* --- Cabecera de página (mástil del instrumento) -------------------------- */
+header {
+  display:flex; align-items:flex-end; gap:var(--e4); flex-wrap:wrap;
+  padding-bottom:var(--e3); margin-bottom:var(--e4);
+  border-bottom:2px solid var(--tinta);
+}
+.ident { display:flex; flex-direction:column; gap:.15rem; }
+h1 { font:600 1.6rem/1 var(--cond); letter-spacing:.01em; text-transform:uppercase; }
+.back { font:600 .68rem/1 var(--mono); text-transform:uppercase;
+  letter-spacing:.12em; color:var(--acero); }
+.back:hover { color:var(--trazo); text-decoration:none; }
+.head-meta { display:flex; align-items:center; gap:var(--e3); margin-left:auto; }
+.updated-line { display:inline-flex; align-items:center; gap:var(--e1);
+  font:400 .74rem/1 var(--mono); color:var(--acero); }
 
-/* Panel plegable de detalles/configuración */
-.collapse { margin:1.5rem 0 .5rem; border:1px solid var(--line); border-radius:10px;
-  background:#10161e; padding:0 1rem; }
-.collapse > summary { cursor:pointer; padding:.8rem .2rem; font-weight:600; font-size:.95rem;
-  list-style:none; }
+/* --- Banda de registro: la firma de la interfaz --------------------------
+   Trazo continuo de flujos por minuto, como el papel de un registrador.    */
+.strip { margin-bottom:var(--e4); overflow:hidden; }
+.strip-head {
+  display:flex; align-items:center; gap:var(--e3);
+  padding:var(--e2) var(--e3); border-bottom:1px solid var(--regla);
+}
+.strip-head .label { flex:none; }
+.strip-head .rule { flex:1 1 auto; height:1px; background:var(--regla); }
+.strip-plot { position:relative; height:70px; background:
+  repeating-linear-gradient(90deg, var(--regla) 0 1px, transparent 1px 100%) 0 0/12.5% 100%;
+  background-color:var(--placa); }
+.strip-plot::after {           /* franja de base, como el borde del papel */
+  content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--regla-fuerte);
+}
+.strip-svg { display:block; width:100%; height:100%; }
+.strip-area { fill:var(--trazo-10); }
+.strip-line { fill:none; stroke:var(--trazo); stroke-width:1.5; stroke-linejoin:round; }
+/* pathLength="1" normaliza el trazo: la animación funciona sea cual sea su
+   longitud real, que depende del número de intervalos y de los picos. */
+.strip-svg.draw .strip-line { stroke-dasharray:1; animation:trazar 1.1s ease-out both; }
+@keyframes trazar { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+.strip-empty { fill:var(--acero); font:400 11px var(--mono); }
+
+/* Lectura de cifras bajo la banda: la síntesis de la captura. */
+.readouts { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 var(--e6);
+  padding:var(--e3); }
+.readout { display:flex; align-items:baseline; gap:var(--e2); }
+.readout b { font:600 1.35rem/1 var(--sans); font-variant-numeric:tabular-nums; }
+.readout .unit { font:600 .68rem/1 var(--mono); text-transform:uppercase;
+  letter-spacing:.1em; color:var(--acero); }
+.readout.state { margin-left:auto; gap:var(--e3); }
+
+/* --- Pestañas ------------------------------------------------------------ */
+.tabs { display:flex; gap:var(--e4); flex-wrap:wrap;
+  border-bottom:1px solid var(--regla); margin-bottom:var(--e4); }
+.tab {
+  background:none; border:none; border-bottom:2px solid transparent;
+  padding:var(--e2) 0; margin-bottom:-1px; cursor:pointer;
+  font:600 .74rem/1.4 var(--mono); text-transform:uppercase; letter-spacing:.11em;
+  color:var(--acero);
+}
+.tab:hover { color:var(--tinta); }
+.tab.active { color:var(--tinta); border-bottom-color:var(--trazo); }
+.tabpanel { animation:aparecer .16s ease; }
+@keyframes aparecer { from { opacity:0; } to { opacity:1; } }
+
+/* --- Rejillas de placas -------------------------------------------------- */
+.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:var(--e4); }
+.grid > section { padding:var(--e3) var(--e4) var(--e4); }
+.panel { padding:var(--e4); margin-bottom:var(--e4); }
+.summary, .kpis { display:grid; gap:var(--e2); margin-bottom:var(--e4);
+  grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); }
+
+/* Tarjeta de cifra: rótulo arriba, cifra grande abajo, sin adorno. */
+.scard { display:flex; align-items:center; gap:var(--e3); padding:var(--e3); }
+.scard .sic { flex:none; color:var(--trazo); }
+.scard .sic .ic { width:1.15rem; height:1.15rem; }
+.scard .sbody { display:flex; flex-direction:column-reverse; gap:.1rem; min-width:0; }
+.scard .srow { display:flex; align-items:baseline; gap:var(--e2); }
+.scard .sv { font:600 1.5rem/1 var(--sans); font-variant-numeric:tabular-nums; }
+.scard.big .sv { font-size:1.85rem; }
+.strend { font:600 .7rem/1 var(--mono); }
+.strend.up { color:var(--senal); }
+.strend.down { color:var(--oxido); }
+
+.kpi { display:flex; align-items:baseline; justify-content:space-between; gap:var(--e2);
+  padding:var(--e2) var(--e3); }
+.kpi-v { font:600 1.05rem/1.2 var(--sans); font-variant-numeric:tabular-nums; }
+
+/* --- Plegables ----------------------------------------------------------- */
+.collapse { margin:var(--e4) 0; padding:0 var(--e4); }
+.collapse > summary {
+  cursor:pointer; list-style:none; padding:var(--e3) 0;
+  font:600 .74rem/1.4 var(--mono); text-transform:uppercase; letter-spacing:.1em;
+}
 .collapse > summary::-webkit-details-marker { display:none; }
-.collapse > summary::before { content:"▸ "; color:var(--muted); }
-.collapse[open] > summary::before { content:"▾ "; }
-.collapse[open] { padding-bottom:1rem; }
-.collapse .panel { background:#0d1219; }
-.collapse h3 { font-size:.88rem; margin:.4rem 0 .5rem; }
+.collapse > summary::before { content:"+"; color:var(--acero); margin-right:var(--e2); }
+.collapse[open] > summary::before { content:"−"; }
+.collapse[open] { padding-bottom:var(--e4); }
+.subcollapse { background:var(--placa); }
 
-/* Sub-panel plegable (Configuración avanzada) */
-.subcollapse { margin:1rem 0 .2rem; background:#0d1219; }
-.subcollapse > summary { font-size:.88rem; padding:.6rem .2rem; }
-.cfg-group { border:1px solid var(--line); border-radius:8px; padding:.6rem 1rem 1rem;
-  margin:.4rem 0 .8rem; display:flex; flex-wrap:wrap; gap:.75rem 1rem; flex:1 1 100%; }
-.cfg-group legend { color:var(--muted); font-size:.78rem; padding:0 .4rem; }
-/* El botón «Guardar» cae a su propia línea, alineado a la izquierda */
-#cfg-form { align-items:flex-start; }
+/* --- Formulario de configuración ----------------------------------------- */
+.controls { display:flex; flex-wrap:wrap; gap:var(--e2); align-items:center; }
+.controlbar { display:flex; flex-wrap:wrap; gap:var(--e2); }
+.cfg { display:flex; flex-wrap:wrap; gap:var(--e3) var(--e4); align-items:flex-start; }
+.cfg label { display:flex; flex-direction:column; gap:var(--e1);
+  font:600 .68rem/1.4 var(--mono); text-transform:uppercase; letter-spacing:.08em;
+  color:var(--acero); }
+.cfg input { min-width:150px; }
+.cfg-group { flex:1 1 100%; display:flex; flex-wrap:wrap; gap:var(--e3) var(--e4);
+  border:1px solid var(--regla); border-radius:var(--radio);
+  padding:var(--e2) var(--e4) var(--e4); margin:0 0 var(--e3); }
+.cfg-group legend { padding:0 var(--e2); }
 
-/* Punto de estado (badge visual) en el panel de Estado */
-.info-group .dot { width:.75rem; height:.75rem; margin:0; }
-.info-group dd { display:flex; justify-content:flex-end; align-items:center; }
+/* --- Grupos de información ----------------------------------------------- */
+.info-groups { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr));
+  gap:var(--e4); margin-bottom:var(--e4); }
+.info-group { padding:var(--e3) var(--e4) var(--e4); }
+.info-group dl { display:grid; grid-template-columns:auto 1fr; gap:var(--e1) var(--e3); margin:0; }
+.info-group dt { color:var(--acero); font-size:.8rem; }
+.info-group dd { margin:0; font-size:.85rem; text-align:right; word-break:break-word;
+  display:flex; justify-content:flex-end; align-items:center; }
+.ipbadges { display:flex; flex-wrap:wrap; gap:var(--e1); justify-content:flex-end; }
 
-/* Direcciones IP como badges */
-.ipbadges { display:flex; flex-wrap:wrap; gap:.3rem; justify-content:flex-end; }
-.ipbadge { font-size:.72rem; padding:.1rem .45rem; border:1px solid var(--line);
-  border-radius:6px; background:#0d1219; }
+/* --- Gráfica de evolución ------------------------------------------------ */
+.chart-row { display:flex; gap:var(--e4); align-items:stretch; flex-wrap:wrap; }
+.chart-row .chart-panel { flex:1 1 460px; min-width:0; }
+.talkers-panel { flex:1 1 300px; }
+.ts-wrap { position:relative; }
+.ts-chart { width:100%; margin-top:var(--e2); }
+.ts-chart .tsvg { width:100%; height:auto; display:block; cursor:crosshair; }
+.ts-chart .grid { stroke:var(--regla); stroke-width:1; }
+.ts-chart .grid.faint { opacity:.5; }
+.ts-chart .yl, .ts-chart .xl { fill:var(--acero); font:400 10px var(--mono); }
+.ts-chart .yl { text-anchor:end; }
+.ts-empty { fill:var(--acero); font:400 12px var(--mono); }
+.ts-cursor { stroke:var(--trazo); stroke-width:1; stroke-dasharray:2 3; }
+.ts-brush { fill:var(--trazo-10); stroke:var(--trazo); stroke-width:1; }
+.ts-legend { display:flex; flex-wrap:wrap; gap:var(--e1) var(--e4); margin-top:var(--e2); }
+.ts-legend .lg { display:inline-flex; align-items:center; gap:var(--e1);
+  font-size:.78rem; cursor:pointer; user-select:none; }
+.ts-legend .lg.off { opacity:.35; text-decoration:line-through; }
+.ts-tip { position:absolute; z-index:20; pointer-events:none; min-width:120px;
+  padding:var(--e2); background:var(--placa);
+  border:1px solid var(--regla-fuerte); border-radius:var(--radio);
+  box-shadow:0 4px 14px rgba(19,24,26,.14); font-size:.76rem; }
+.ts-tip .tt-time { color:var(--acero); font-family:var(--mono); margin-bottom:var(--e1); }
+.sw { display:inline-block; width:.6rem; height:.6rem; border-radius:1px; margin-right:.2rem; }
 
-/* Botones: estado deshabilitado y spinner de carga */
-.btn:disabled { opacity:.45; cursor:not-allowed; }
-.btn.loading { opacity:1 !important; position:relative; color:transparent !important;
-  pointer-events:none; }
-.btn.loading::after { content:""; position:absolute; top:50%; left:50%;
-  width:.95rem; height:.95rem; margin:-.48rem 0 0 -.48rem; border-radius:50%;
-  border:2px solid rgba(255,255,255,.35); border-top-color:#fff;
-  animation:spin .6s linear infinite; }
-@keyframes spin { to { transform:rotate(360deg); } }
+/* --- Tabla de flujos ----------------------------------------------------- */
+.table-head { display:flex; align-items:center; justify-content:space-between;
+  gap:var(--e4); flex-wrap:wrap; }
+.table-head h2 { flex:1 1 auto; }
+.table-tools, .filterbar { display:flex; flex-wrap:wrap; gap:var(--e2); align-items:center; }
+.filterbar { margin:var(--e3) 0; }
+.active-filters, .recent-searches { display:flex; flex-wrap:wrap; align-items:center;
+  gap:var(--e2); margin:var(--e3) 0; }
+.ip-recent { display:inline-flex; flex-wrap:wrap; gap:var(--e1); }
+.table-scroll { max-height:460px; overflow:auto; transition:opacity .12s ease; }
+.table-scroll.filtering { opacity:.35; }
+.table-scroll thead th { position:sticky; top:0; z-index:2; background:var(--placa);
+  box-shadow:inset 0 -1px 0 var(--regla); }
+.table-footer { display:flex; align-items:center; justify-content:space-between;
+  gap:var(--e4); flex-wrap:wrap; margin:var(--e3) 0; }
+.pager { display:flex; align-items:center; gap:var(--e4); }
+table.sortable thead th[data-sort] { cursor:pointer; user-select:none; }
+table.sortable thead th[data-sort]:hover { color:var(--tinta); }
+table.sortable thead th.sorted { color:var(--trazo); }
+table.sortable thead th[data-dir="asc"]::after  { content:" ▲"; font-size:.65em; }
+table.sortable thead th[data-dir="desc"]::after { content:" ▼"; font-size:.65em; }
 
-/* Barra de control: botones más pequeños (el foco es el análisis, no el control) */
-.controlbar .btn { padding:.28rem .6rem; font-size:.78rem; }
-
-/* Gráfica de evolución temporal (SVG) */
-.chart-panel .table-head { margin-top:0; }
-.ts-chart { width:100%; margin-top:.3rem; }
-.ts-chart .tsvg { width:100%; height:auto; display:block; }
-.ts-chart .grid { stroke:var(--line); stroke-width:1; }
-.ts-chart .yl { fill:var(--muted); font-size:11px; text-anchor:end; }
-.ts-chart .xl { fill:var(--muted); font-size:11px; }
-.ts-legend { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin-top:.5rem; }
-.ts-legend .lg { display:inline-flex; align-items:center; gap:.35rem; font-size:.78rem; color:var(--fg); }
-.ts-legend .sw { width:.7rem; height:.7rem; border-radius:2px; display:inline-block; }
-
-/* Resaltado de tráfico "Unknown" */
-.warn-row .lbl, .warn-row td:nth-child(6) { color:#e3b341; }
-.bars .bar.warn { background:linear-gradient(90deg,#9e6a00,#d29922); }
-tr.warn-row td { background:rgba(210,153,34,.06); }
-
-/* Barra de filtros de la tabla de flujos */
-.filterbar { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.5rem 0; }
-.filterbar .txt { font-size:.8rem; padding:.25rem .4rem; }
-.btn.small { padding:.25rem .55rem; font-size:.78rem; }
-
-/* Cabeceras ordenables */
-table.sortable thead th[data-sort] { cursor:pointer; user-select:none; white-space:nowrap; }
-table.sortable thead th[data-sort]:hover { color:var(--fg); }
-table.sortable thead th.sorted { color:#58a6ff; }
-table.sortable thead th[data-dir="asc"]::after { content:" ▲"; font-size:.7em; }
-table.sortable thead th[data-dir="desc"]::after { content:" ▼"; font-size:.7em; }
-
-/* Búsquedas de IP recientes */
-.recent-searches { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; margin:.5rem 0; }
-.ip-recent { display:inline-flex; flex-wrap:wrap; gap:.3rem; }
-.chip { background:#1b2430; color:#58a6ff; border:1px solid var(--line); border-radius:999px;
-  padding:.12rem .6rem; font-size:.78rem; cursor:pointer; }
-.chip:hover { border-color:#58a6ff; }
-
-/* Barras de clasificación clicables (filtran la tabla) */
-table.bars tr.clickable { cursor:pointer; }
-table.bars tr.clickable:hover td { background:rgba(88,166,255,.10); }
-table.bars tr.clickable .lbl::after { content:" ⤵"; color:var(--muted); opacity:0; font-size:.8em; }
-table.bars tr.clickable:hover .lbl::after { opacity:1; }
-
-/* Chips de filtros activos (ruta de drill-down) */
-.active-filters { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin:.5rem 0; }
-.fchip { background:rgba(88,166,255,.12); border:1px solid #1f6feb; color:#cbe3ff;
-  border-radius:999px; padding:.12rem .55rem; font-size:.78rem; cursor:pointer; }
-.fchip:hover { background:rgba(248,81,73,.15); border-color:var(--bad); }
-.fchip b { color:var(--muted); margin-left:.15rem; }
-
-/* Filas de flujo clicables (abren el detalle) */
+/* Filas accionables: la IP lleva a su análisis, el resto abre el detalle. */
 #t-recent tbody tr.frow { cursor:pointer; }
-#t-recent tbody tr.frow:hover td { background:rgba(88,166,255,.07); }
-.ipcell, .peer-ip { color:#58a6ff; cursor:pointer; }
+#t-recent tbody tr.frow:hover td { background:var(--trazo-06); }
+table.bars tr.clickable { cursor:pointer; }
+table.bars tr.clickable:hover td { background:var(--trazo-06); }
+table.bars tr.clickable .lbl::after { content:" ⌄"; color:var(--acero); opacity:0; }
+table.bars tr.clickable:hover .lbl::after { opacity:1; }
+.ipcell, .peer-ip { color:var(--trazo); cursor:pointer; font-family:var(--mono); }
 .ipcell:hover, .peer-ip:hover { text-decoration:underline; }
 
-/* Gráfica: envoltorio con posición para el tooltip */
-.ts-wrap { position:relative; }
-.ts-cursor { stroke:#58a6ff; stroke-width:1; stroke-dasharray:3 3; opacity:.7; }
-.ts-brush { fill:rgba(88,166,255,.15); stroke:#58a6ff; stroke-width:1; }
-.tsvg { cursor:crosshair; }
-.ts-tip { position:absolute; pointer-events:none; z-index:20; background:#0b0f14ee;
-  border:1px solid var(--line); border-radius:7px; padding:.45rem .6rem; font-size:.76rem;
-  box-shadow:0 6px 20px rgba(0,0,0,.5); min-width:120px; }
-.ts-tip .tt-time { color:var(--muted); margin-bottom:.25rem; }
-.ts-tip .sw { display:inline-block; width:.65rem; height:.65rem; border-radius:2px; margin-right:.3rem; }
-.ts-legend .lg { cursor:pointer; user-select:none; }
-.ts-legend .lg.off { opacity:.4; text-decoration:line-through; }
+/* Tráfico sin clasificar: ocre, nunca rojo — no es un fallo. */
+.warn-row td { background:var(--ocre-10); }
+.warn-row .lbl, .warn-row td:nth-child(6) { color:var(--ocre); }
+.info-mark { color:var(--ocre); cursor:help; margin-left:var(--e1); }
+.info-mark .ic { width:.9em; height:.9em; }
 
-/* Tabla de flujos: scroll con cabecera fija + paginación */
-.table-scroll { max-height:460px; overflow:auto; border:1px solid var(--line); border-radius:8px; }
-.table-scroll table { max-width:none; }
-.table-scroll thead th { position:sticky; top:0; z-index:2; background:#111823;
-  box-shadow:inset 0 -1px 0 var(--line); }
-.table-controls { display:flex; flex-direction:column; gap:.5rem; margin-top:.3rem; }
-/* Fila inferior de la tabla: paginación a la izquierda, filtrar/filas/export a la derecha */
-.table-footer { display:flex; align-items:center; justify-content:space-between;
-  gap:1rem; flex-wrap:wrap; margin:.7rem 0; }
-.pager { display:flex; align-items:center; gap:1rem; }
-.pager .btn:disabled { opacity:.4; cursor:not-allowed; }
+/* --- IPs más activas ----------------------------------------------------- */
+.talkers-h { margin:var(--e3) 0 var(--e1); }
+.talkers td { padding:.24rem var(--e2); }
+.talkers .lbl { color:var(--trazo); font-family:var(--mono); font-size:.8rem; }
+.talkers .barcell { width:26%; }
+.talkers tr.clickable .lbl::after { content:none; }
 
-/* Tabla de metadatos completos en el panel de detalle */
-.meta-table { width:100%; font-size:.76rem; }
-.meta-table td { padding:.2rem .4rem; border-bottom:1px solid var(--line); word-break:break-all; }
-.meta-table td:first-child { white-space:nowrap; width:40%; }
-#flow-meta { margin-top:1rem; }
+/* --- Análisis por IP ----------------------------------------------------- */
+.ip-result { margin-top:var(--e3); padding:var(--e3) var(--e4); }
+.ipl-grid { display:grid; gap:var(--e4);
+  grid-template-columns:repeat(auto-fit, minmax(min(170px,100%),1fr)); }
+/* min-width:0 evita que una etiqueta larga (organización, IPv6) ensanche la
+   columna del grid y desborde la placa; el texto se parte en su lugar. */
+.ipl { min-width:0; }
+.ipl h4 { margin:0 0 var(--e2); overflow-wrap:anywhere; display:flex;
+  align-items:baseline; gap:var(--e2); }
+/* «8 de 47»: la lista va recortada y el total evita leer las filas como el todo. */
+.ipl-count { margin-left:auto; font-weight:400; letter-spacing:.04em; white-space:nowrap; }
+.ip-title { margin:0 0 var(--e2); font:600 1rem/1.2 var(--mono); }
+.ip-result .readouts { padding:0 0 var(--e3); margin-bottom:var(--e3);
+  border-bottom:1px solid var(--regla); gap:0 var(--e4); }
+.ip-result .readout b { font-size:1.15rem; }
+/* Las listas se leen como las tablas de barras: etiqueta a la izquierda, cifra
+   tabular a la derecha y filete entre filas. Sin viñetas. */
+.ipl ul { margin:0; padding:0; list-style:none; font-size:.82rem; }
+.ipl li { display:flex; align-items:baseline; gap:var(--e2);
+  padding:.22rem 0; border-bottom:1px solid var(--regla); overflow-wrap:anywhere; }
+.ipl li:last-child { border-bottom:none; }
+.ipl-n { margin-left:auto; color:var(--acero); font-family:var(--mono);
+  font-size:.76rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-/* Panel lateral de detalle de flujo */
-.drawer-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1500; }
-.drawer { position:fixed; top:0; right:0; height:100%; width:min(380px,92vw);
-  background:#0f151d; border-left:1px solid var(--line); z-index:1600; overflow:auto;
-  transform:translateX(100%); transition:transform .25s ease; padding:1rem 1.2rem; }
+/* --- Cajón de detalle del flujo ------------------------------------------ */
+.drawer-overlay { position:fixed; inset:0; background:rgba(19,24,26,.35); z-index:1500; }
+.drawer { position:fixed; inset:0 0 0 auto; width:min(400px,92vw); z-index:1600;
+  overflow:auto; padding:var(--e4);
+  background:var(--placa); border-left:1px solid var(--regla-fuerte);
+  transform:translateX(100%); transition:transform .22s ease; }
 .drawer.open { transform:none; }
-.drawer-head { display:flex; align-items:center; justify-content:space-between; gap:1rem;
-  border-bottom:1px solid var(--line); padding-bottom:.6rem; margin-bottom:.6rem; }
-.drawer-head h3 { margin:0; font-size:1rem; }
-.drawer-dl { display:grid; grid-template-columns:auto 1fr; gap:.4rem .8rem; margin:0; }
-.drawer-dl dt { color:var(--muted); font-size:.78rem; }
-.drawer-dl dd { margin:0; font-size:.82rem; text-align:right; word-break:break-all; }
-.drawer-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
+.drawer-head { display:flex; align-items:center; justify-content:space-between;
+  gap:var(--e4); padding-bottom:var(--e2); margin-bottom:var(--e3);
+  border-bottom:2px solid var(--tinta); }
+.drawer-head h3 { font:600 .78rem/1.4 var(--mono); text-transform:uppercase; letter-spacing:.1em; }
+.drawer-dl { display:grid; grid-template-columns:auto 1fr; gap:var(--e1) var(--e3); margin:0; }
+.drawer-dl dt { color:var(--acero); font-size:.78rem; }
+.drawer-dl dd { margin:0; font-size:.82rem; text-align:right; word-break:break-all;
+  font-family:var(--mono); }
+.drawer-actions { display:flex; flex-wrap:wrap; gap:var(--e2); margin-top:var(--e4); }
+.meta-table { font-size:.75rem; }
+.meta-table td { padding:.18rem var(--e1); word-break:break-all; }
+.meta-table td:first-child { white-space:nowrap; width:42%; color:var(--acero); font-family:var(--mono); }
+#flow-meta { margin-top:var(--e4); }
 
-/* Info agrupada por tipo */
-.info-groups { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr));
-  gap:1rem; margin-bottom:.5rem; }
-.info-group { border:1px solid var(--line); border-radius:10px; padding:.8rem 1rem; }
-.info-group h3 { margin:.1rem 0 .6rem; font-size:.9rem; }
-.info-group dl { display:grid; grid-template-columns:auto 1fr; gap:.3rem .8rem; margin:0; }
-.info-group dt { color:var(--muted); font-size:.78rem; }
-.info-group dd { margin:0; font-size:.85rem; text-align:right; word-break:break-word; }
+/* --- Avisos -------------------------------------------------------------- */
+.error {
+  display:block; padding:var(--e2) var(--e3); margin:0 0 var(--e3);
+  border:1px solid var(--oxido); border-left:3px solid var(--oxido); border-radius:2px;
+  background:var(--oxido-10); color:var(--oxido); font-size:.85rem;
+}
+#errors:empty { display:none; }
+#errors .error { display:inline-block; margin-right:var(--e2); }
 
-/* Botones de control con color por acción */
-.btn-start   { background:#238636; border-color:#2ea043; color:#fff; }
-.btn-start:hover   { background:#2ea043; }
-.btn-stop    { background:#a4292b; border-color:#da3633; color:#fff; }
-.btn-stop:hover    { background:#da3633; }
-.btn-restart { background:#9e6a00; border-color:#d29922; color:#fff; }
-.btn-restart:hover { background:#bb8009; }
-.btn-reset   { background:#3a424c; border-color:#6e7681; color:#e6e6e6; }
-.btn-reset:hover   { background:#4a545f; }
-.btn-purge   { background:#7d1416; border-color:#b62324; color:#fff; }
-.btn-purge:hover   { background:#a01c1e; }
-.btn-iface   { background:#1b2430; border-color:#1f6feb; color:#e6e6e6; }
-.btn-iface:hover   { background:#233043; }
-a.btn { text-decoration:none; display:inline-block; }
-
-/* Toasts */
-.toasts { position:fixed; top:1rem; right:1rem; display:flex; flex-direction:column;
-  gap:.5rem; z-index:1000; max-width:min(360px, 90vw); }
-.toast { padding:.7rem .9rem; border-radius:8px; font-size:.85rem; color:#fff;
-  background:#30363d; border:1px solid var(--line); white-space:pre-line; cursor:pointer;
-  opacity:0; transform:translateX(20px); transition:opacity .25s, transform .25s;
-  box-shadow:0 6px 20px rgba(0,0,0,.4); }
+.toasts { position:fixed; top:var(--e4); right:var(--e4); z-index:1000;
+  display:flex; flex-direction:column; gap:var(--e2); max-width:min(360px,90vw); }
+.toast {
+  padding:var(--e3); border-radius:var(--radio); cursor:pointer; white-space:pre-line;
+  background:var(--placa); border:1px solid var(--regla-fuerte); border-left:3px solid var(--acero);
+  box-shadow:0 6px 20px rgba(19,24,26,.18); font-size:.84rem;
+  opacity:0; transform:translateX(12px); transition:opacity .22s, transform .22s;
+}
 .toast.show { opacity:1; transform:none; }
-.toast.ok   { background:#1b4b2a; border-color:var(--ok); }
-.toast.bad  { background:#5c1a1a; border-color:var(--bad); }
-.toast.warn { background:#5c4406; border-color:#d29922; }
+.toast.ok   { border-left-color:var(--senal); }
+.toast.bad  { border-left-color:var(--oxido); }
+.toast.warn { border-left-color:var(--ocre); }
+.action-out { margin:var(--e2) 0 0; padding:var(--e2) var(--e3);
+  background:var(--hueco); border:1px solid var(--regla); border-radius:2px;
+  font:400 .78rem/1.5 var(--mono); white-space:pre-wrap; max-height:220px; overflow:auto; }
 
-/* Buscador de IP */
-.ip-result { margin-top:.8rem; padding:.8rem 1rem; border:1px solid var(--line);
-  border-radius:8px; background:#0b0f14; }
-.ipl-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:1rem; }
-.ipl h4 { margin:.2rem 0 .4rem; font-size:.82rem; color:var(--fg); }
-.ipl ul { margin:0; padding-left:1rem; font-size:.82rem; }
-.ipl li { margin:.1rem 0; }
+/* ============================ 5. VISTAS =================================== */
 
-/* Cabecera de tabla con herramientas + filtros de protocolo */
-.table-head { display:flex; align-items:center; justify-content:space-between;
-  gap:1rem; flex-wrap:wrap; margin-top:1.5rem; }
-.table-head h2 { margin:0; }
-.table-tools { display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
-.toggles { display:flex; flex-wrap:wrap; gap:.3rem .8rem; align-items:center;
-  margin:.5rem 0; font-size:.8rem; }
-.chk { display:inline-flex; align-items:center; gap:.25rem; color:var(--fg);
-  padding:.1rem .4rem; border:1px solid var(--line); border-radius:6px; cursor:pointer; }
+/* Listado de la flota: la tabla es el contenido, va sobre placa. */
+#sondas { background:var(--placa); border:1px solid var(--regla); border-radius:var(--radio); }
+#sondas th, #sondas td { padding:.5rem var(--e3); vertical-align:middle; }
+#sondas tbody tr:hover td { background:var(--trazo-06); }
+#sondas td:first-child a { font-family:var(--mono); font-weight:500; }
+.num { text-align:right; font-variant-numeric:tabular-nums; }
+/* Trazo de actividad por sonda: mismo lenguaje que la banda de registro. */
+.sparkcell { width:170px; }
+.spark { display:block; width:160px; height:26px; }
 
-/* Pie de página (versión Tranalyzer en pequeño, estilo RRSS) */
-.pagefoot { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;
-  margin:2.5rem 0 .5rem; padding-top:1rem; border-top:1px solid var(--line); }
+/* Configuración: mismo hueco entre placas y contenido centrado dentro. */
+#tab-config .panel > :first-child { margin-top:0; }
+#tab-config .panel > :last-child  { margin-bottom:0; }
 
-.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1rem; }
-/* Las secciones de análisis son el contenido principal: se destacan como tarjetas. */
-.grid > section { border:1px solid var(--line); border-radius:10px; padding:.4rem 1rem 1rem;
-  background:#0f151d; }
-.grid > section h2 { margin-top:.6rem; font-size:1.02rem; }
-table.bars { width:100%; }
-table.bars td { border-bottom:1px solid var(--line); padding:.35rem .5rem; }
-table.bars .lbl { white-space:nowrap; }
-table.bars .num { text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
-table.bars .barcell { width:60%; }
-table.bars .bar { display:block; height:.7rem; border-radius:3px;
-  background:linear-gradient(90deg,#1f6feb,#58a6ff); min-width:2px; }
+.pagefoot { display:flex; justify-content:space-between; gap:var(--e4); flex-wrap:wrap;
+  margin-top:var(--e8); padding-top:var(--e3); border-top:1px solid var(--regla);
+  font:400 .74rem/1.4 var(--mono); color:var(--acero); }
+
+/* ============================ 6. ESTADOS ================================== */
+
+/* Cambio de cifra: un destello breve, sin salto de maquetación. */
+@keyframes destello { 0% { color:var(--trazo); } 100% { color:inherit; } }
+.bump { animation:destello .5s ease-out; display:inline-block; }
+
+@media (max-width:640px) {
+  body { padding:var(--e4) var(--e3) var(--e6); }
+  .tabs { gap:var(--e3); }
+  .readouts { gap:0 var(--e4); }
+  .readout.state { margin-left:0; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}
